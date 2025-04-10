@@ -14,6 +14,8 @@
         <div class="search-container">
             <label for="searchInput" class="sr-only">Cerca alimento</label>
             <input type="search" id="searchInput" placeholder="Cerca un alimento..." aria-label="Cerca alimento" autocomplete="off" aria-haspopup="listbox" aria-controls="suggestionsList">
+             <!-- Clear Search Button -->
+            <button type="button" id="clearSearchBtn" class="clear-search-button" aria-label="Pulisci ricerca" hidden>×</button>
             <!-- Suggestions container -->
             <div id="suggestionsContainer" class="suggestions-container" role="listbox" aria-labelledby="searchInput">
                  <ul id="suggestionsList" class="suggestions-list"></ul>

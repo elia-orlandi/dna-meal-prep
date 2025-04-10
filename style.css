@@ -11,416 +11,217 @@
     --color-category-bg: #fff;
     --color-category-header-bg: #e9ecef;
     --color-category-header-text: #495057;
-    --bar-height: 18px; /* Slightly smaller for mobile */
+    --bar-height: 18px;
     --border-radius: 4px;
-    --spacing-unit: 1rem; /* Base spacing unit */
-    --color-button-active-bg: #cce5ff; /* Light blue for active legend button */
+    --spacing-unit: 1rem;
+    --color-button-active-bg: #cce5ff;
     --color-button-active-border: #0056b3;
     --color-suggestion-hover-bg: #eee;
+    --color-clear-button: #aaa;
+    --color-clear-button-hover: #777;
 }
 
 /* Basic Reset & Body Styles */
-*, *::before, *::after {
-    box-sizing: border-box;
-}
-
+*, *::before, *::after { box-sizing: border-box; }
 body {
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-    margin: 0;
-    padding: 0;
-    background-color: var(--color-background);
-    color: var(--color-text);
-    line-height: 1.5; /* Adjusted line height */
-    font-size: 16px; /* Base font size */
+    margin: 0; padding: 0; background-color: var(--color-background);
+    color: var(--color-text); line-height: 1.5; font-size: 16px;
 }
-
-/* Screen Reader Only Class */
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border-width: 0;
+.sr-only { /* Screen Reader Only */
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0;
 }
 
 /* Header Styles */
 header {
-    background-color: var(--color-header-bg);
-    color: var(--color-header-text);
-    padding: var(--spacing-unit);
-    text-align: center;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    position: sticky; /* Keep header visible */
-    top: 0;
-    z-index: 10;
+    background-color: var(--color-header-bg); color: var(--color-header-text);
+    padding: var(--spacing-unit); text-align: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 10;
 }
-
-header h1 {
-    margin: 0 0 calc(var(--spacing-unit) / 4) 0;
-    font-size: 1.5em;
-}
-
-.subtitle {
-    font-size: 0.85em;
-    opacity: 0.9;
-    margin: 0 0 calc(var(--spacing-unit) / 2) 0;
-}
+header h1 { margin: 0 0 calc(var(--spacing-unit) / 4) 0; font-size: 1.5em; }
+.subtitle { font-size: 0.85em; opacity: 0.9; margin: 0 0 calc(var(--spacing-unit) / 2) 0; }
 
 /* --- Search & Suggestions Styles --- */
 .search-container {
-    margin: 0 auto; /* Center search */
-    max-width: 500px; /* Limit search width */
-    position: relative; /* Crucial for positioning suggestions */
+    margin: 0 auto; max-width: 500px; position: relative;
 }
-
 #searchInput {
     width: 100%;
     padding: calc(var(--spacing-unit) / 1.5);
-    border: 1px solid var(--color-border);
-    border-radius: var(--border-radius);
-    font-size: 1em;
-    appearance: none; /* Remove default mobile styles */
-    -webkit-appearance: none;
-    /* Ensure input is above suggestions if needed, though z-index on container is usually enough */
-    /* position: relative;
-    z-index: 101; */
+    /* Add padding-right to make space for the clear button */
+    padding-right: calc(var(--spacing-unit) * 2.5);
+    border: 1px solid var(--color-border); border-radius: var(--border-radius);
+    font-size: 1em; appearance: none; -webkit-appearance: none;
 }
-#searchInput:focus {
-    outline: 2px solid var(--color-header-text);
-    outline-offset: 2px;
+#searchInput:focus { outline: 2px solid var(--color-header-text); outline-offset: 2px; }
+/* Hide browser's default clear button (optional) */
+#searchInput::-webkit-search-cancel-button,
+#searchInput::-webkit-search-decoration { display: none; }
+
+/* Clear Search Button Styles */
+.clear-search-button {
+    position: absolute;
+    top: 50%;
+    right: calc(var(--spacing-unit) / 2);
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    font-size: 1.5em; /* Make the 'x' bigger */
+    line-height: 1;
+    color: var(--color-clear-button);
+    cursor: pointer;
+    padding: 0 calc(var(--spacing-unit) / 3); /* Small padding */
+    display: block; /* Overrides default 'hidden' attribute display:none */
+    opacity: 0.7;
+    transition: color 0.2s ease, opacity 0.2s ease;
+    z-index: 5; /* Ensure it's above the input text if needed */
+}
+.clear-search-button:hover,
+.clear-search-button:focus {
+    color: var(--color-clear-button-hover);
+    opacity: 1;
+    outline: none;
+}
+/* Hide button using 'hidden' attribute selector for better semantics */
+.clear-search-button[hidden] {
+    display: none;
 }
 
 .suggestions-container {
-    position: absolute;
-    top: 100%; /* Position below the input */
-    left: 0;
-    right: 0;
-    background-color: var(--color-category-bg); /* White background */
-    border: 1px solid var(--color-border);
-    border-top: none; /* Avoid double border */
-    border-radius: 0 0 var(--border-radius) var(--border-radius);
-    max-height: 250px; /* Limit height */
-    overflow-y: auto; /* Add scroll if needed */
-    z-index: 100; /* Ensure it's above main content */
-    display: none; /* Hidden by default */
+    position: absolute; top: 100%; left: 0; right: 0;
+    background-color: var(--color-category-bg); border: 1px solid var(--color-border);
+    border-top: none; border-radius: 0 0 var(--border-radius) var(--border-radius);
+    max-height: 250px; overflow-y: auto; z-index: 100; display: none;
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
-
-.suggestions-container.visible {
-    display: block; /* Show when needed */
-}
-
-.suggestions-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
+.suggestions-container.visible { display: block; }
+.suggestions-list { list-style: none; padding: 0; margin: 0; }
 .suggestion-item {
-    padding: calc(var(--spacing-unit) / 1.8) var(--spacing-unit);
-    cursor: pointer;
-    font-size: 0.95em;
-    border-bottom: 1px solid #f0f0f0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    color: var(--color-text);
+    padding: calc(var(--spacing-unit) / 1.8) var(--spacing-unit); cursor: pointer;
+    font-size: 0.95em; border-bottom: 1px solid #f0f0f0; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; color: var(--color-text); /* Ensure text color */
 }
-.suggestion-item:last-child {
-    border-bottom: none;
+.suggestion-item:last-child { border-bottom: none; }
+.suggestion-item:hover, .suggestion-item.active {
+    background-color: var(--color-suggestion-hover-bg); color: var(--color-text);
 }
-
-.suggestion-item:hover,
-.suggestion-item.active { /* Style for hover and keyboard navigation */
-    background-color: var(--color-suggestion-hover-bg);
-    color: var(--color-text);
-}
-/* Style to highlight matching part of text */
-.suggestion-item mark {
-    background-color: transparent;
-    font-weight: bold;
-    color: inherit;
-    padding: 0;
-}
-
+.suggestion-item mark { background-color: transparent; font-weight: bold; color: inherit; padding: 0; }
 
 /* Main Content Area */
-#foodListContainer {
-    padding: var(--spacing-unit);
-    max-width: 900px; /* Max width for larger screens */
-    margin: var(--spacing-unit) auto;
-}
+#foodListContainer { padding: var(--spacing-unit); max-width: 900px; margin: var(--spacing-unit) auto; }
 
 /* Category Section Styles */
 .category-section {
-    background-color: var(--color-category-bg);
-    margin-bottom: var(--spacing-unit);
-    border-radius: var(--border-radius);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-    overflow: hidden; /* Contain borders and children */
+    background-color: var(--color-category-bg); margin-bottom: var(--spacing-unit);
+    border-radius: var(--border-radius); box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    overflow: hidden;
 }
-
 .category-header {
-    background-color: var(--color-category-header-bg);
-    color: var(--color-category-header-text);
-    padding: calc(var(--spacing-unit) / 1.2) var(--spacing-unit);
-    font-size: 1.05em;
-    font-weight: 600; /* Slightly bolder */
-    border: none; /* Remove default button border */
-    width: 100%; /* Make it full width */
-    text-align: left; /* Align text left */
-    cursor: pointer;
-    position: relative; /* For positioning the indicator */
-    display: flex; /* To align text and indicator */
-    justify-content: space-between; /* Push indicator to the right */
-    align-items: center;
-    border-bottom: 1px solid var(--color-border); /* Separator line */
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    background-color: var(--color-category-header-bg); color: var(--color-category-header-text);
+    padding: calc(var(--spacing-unit) / 1.2) var(--spacing-unit); font-size: 1.05em;
+    font-weight: 600; border: none; width: 100%; text-align: left; cursor: pointer;
+    position: relative; display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid var(--color-border); text-transform: uppercase; letter-spacing: 0.5px;
 }
-
-.category-header:hover,
-.category-header:focus {
-     background-color: darken(var(--color-category-header-bg), 5%);
-     outline: none;
+.category-header:hover, .category-header:focus { background-color: darken(var(--color-category-header-bg), 5%); outline: none; }
+.category-header::after { /* Indicator (+/-) */
+    content: '+'; font-size: 1.5em; font-weight: bold;
+    transition: transform 0.2s ease-in-out; margin-left: calc(var(--spacing-unit) / 2); line-height: 1;
 }
-
-/* Collapsible Indicator (+/-) */
-.category-header::after {
-    content: '+';
-    font-size: 1.5em;
-    font-weight: bold;
-    transition: transform 0.2s ease-in-out;
-    margin-left: calc(var(--spacing-unit) / 2);
-    line-height: 1;
-}
-
-.category-section:not(.collapsed) > .category-header::after {
-    content: '−'; /* Use a proper minus sign */
-    transform: rotate(180deg); /* Optional: Animate the plus */
-}
+.category-section:not(.collapsed) > .category-header::after { content: '−'; transform: rotate(180deg); }
 
 /* Food Item Container (for smooth collapse) */
 .food-item-wrapper {
-    max-height: 0; /* Collapsed by default */
-    overflow: hidden;
-    transition: max-height 0.35s ease-out;
-    border-top: none; /* Remove potential double border */
+    max-height: 0; overflow: hidden; transition: max-height 0.35s ease-out; border-top: none;
 }
-
+/* Apply max-height instantly when removing collapsed for auto-expand */
 .category-section:not(.collapsed) > .food-item-wrapper {
-    max-height: 2000px; /* Large enough height for content */
-    transition: max-height 0.5s ease-in;
+    max-height: 2000px; /* Use a large enough value */
+    /* Apply transition only when collapsing, not when auto-expanding */
+    /* transition: max-height 0.5s ease-in; */
+}
+.category-section.collapsing > .food-item-wrapper {
+     transition: max-height 0.35s ease-out !important; /* Ensure transition applies on manual collapse */
 }
 
 
 /* Food Item Styles (Mobile First) */
 .food-item {
-    display: grid; /* Use grid for flexible layout */
-    grid-template-columns: 1fr auto; /* Name takes space, value is auto */
-    grid-template-areas:
-        "name value"
-        "bar bar"; /* Bar spans full width below */
-    gap: calc(var(--spacing-unit) / 4) calc(var(--spacing-unit) / 2); /* Small gap */
-    padding: calc(var(--spacing-unit) / 1.5) var(--spacing-unit);
-    border-bottom: 1px solid #f0f0f0; /* Lighter border between items */
+    display: grid; grid-template-columns: 1fr auto; grid-template-areas: "name value" "bar bar";
+    gap: calc(var(--spacing-unit) / 4) calc(var(--spacing-unit) / 2);
+    padding: calc(var(--spacing-unit) / 1.5) var(--spacing-unit); border-bottom: 1px solid #f0f0f0;
 }
+.category-section .food-item-wrapper .food-item:last-child { border-bottom: none; }
+.food-name { grid-area: name; font-weight: 500; word-break: break-word; align-self: center; }
+.food-value { grid-area: value; font-weight: bold; text-align: right; align-self: center; font-size: 0.95em; }
+.value-bar-container { grid-area: bar; width: 100%; height: var(--bar-height); background-color: #e0e0e0; border-radius: var(--border-radius); overflow: hidden; }
+.value-bar { height: 100%; border-radius: var(--border-radius); transition: width 0.5s ease-in-out, background-color 0.3s ease; }
 
-.category-section .food-item-wrapper .food-item:last-child {
-    border-bottom: none; /* No border on the last item within a category */
-}
-
-.food-name {
-    grid-area: name;
-    font-weight: 500;
-    word-break: break-word;
-    align-self: center;
-}
-
-.food-value {
-    grid-area: value;
-    font-weight: bold;
-    text-align: right;
-    align-self: center;
-    font-size: 0.95em;
-}
-
-.value-bar-container {
-    grid-area: bar;
-    width: 100%; /* Full width on mobile */
-    height: var(--bar-height);
-    background-color: #e0e0e0;
-    border-radius: var(--border-radius);
-    overflow: hidden;
-}
-
-.value-bar {
-    height: 100%;
-    border-radius: var(--border-radius);
-    transition: width 0.5s ease-in-out, background-color 0.3s ease;
-}
-
-/* Color Classes (remain the same) */
+/* Color Classes */
 .color-red { background-color: var(--color-red); }
 .color-orange { background-color: var(--color-orange); }
 .color-yellow { background-color: var(--color-yellow); }
 .color-green { background-color: var(--color-green); }
 
 /* Loading/Error Messages */
-.loading-message,
-.no-results-message,
-.error-message {
-    text-align: center;
-    padding: calc(var(--spacing-unit) * 2);
-    color: #666;
-    font-style: italic;
+.loading-message, .no-results-message, .error-message, .empty-data-message {
+    text-align: center; padding: calc(var(--spacing-unit) * 2); color: #666; font-style: italic;
 }
-.error-message {
-    color: var(--color-red);
-    font-weight: bold;
-    font-style: normal;
-}
+.error-message { color: var(--color-red); font-weight: bold; font-style: normal; }
 
 
 /* Footer Styles */
 footer {
-    background-color: var(--color-category-header-bg); /* Match category header bg */
-    padding: var(--spacing-unit);
-    margin-top: calc(var(--spacing-unit) * 1.5);
-    text-align: center;
-    font-size: 0.9em;
-    border-top: 1px solid var(--color-border);
-    color: var(--color-category-header-text); /* Match category header text */
+    background-color: var(--color-category-header-bg); padding: var(--spacing-unit);
+    margin-top: calc(var(--spacing-unit) * 1.5); text-align: center; font-size: 0.9em;
+    border-top: 1px solid var(--color-border); color: var(--color-category-header-text);
 }
-
-/* Legend Switcher Styles */
-.legend-switcher {
-    margin-bottom: var(--spacing-unit);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: calc(var(--spacing-unit) / 2);
-    flex-wrap: wrap; /* Allow wrapping on small screens */
+.legend-switcher { /* Legend Buttons Container */
+    margin-bottom: var(--spacing-unit); display: flex; justify-content: center;
+    align-items: center; gap: calc(var(--spacing-unit) / 2); flex-wrap: wrap;
 }
-
-.legend-switcher-label {
-    font-weight: 500;
-    margin-right: calc(var(--spacing-unit) / 2);
-}
-
-.legend-button {
-    padding: calc(var(--spacing-unit) / 3) calc(var(--spacing-unit) / 1.5);
-    border: 1px solid var(--color-border);
-    background-color: var(--color-category-bg); /* White background */
-    color: var(--color-category-header-text);
-    border-radius: var(--border-radius);
-    cursor: pointer;
-    font-size: 0.9em;
+.legend-switcher-label { font-weight: 500; margin-right: calc(var(--spacing-unit) / 2); }
+.legend-button { /* Individual Legend Button */
+    padding: calc(var(--spacing-unit) / 3) calc(var(--spacing-unit) / 1.5); border: 1px solid var(--color-border);
+    background-color: var(--color-category-bg); color: var(--color-category-header-text);
+    border-radius: var(--border-radius); cursor: pointer; font-size: 0.9em;
     transition: background-color 0.2s ease, border-color 0.2s ease;
 }
-
-.legend-button:hover {
-    background-color: #f8f9fa; /* Slightly off-white hover */
-}
-
+.legend-button:hover { background-color: #f8f9fa; }
 .legend-button.active {
-    background-color: var(--color-button-active-bg);
-    border-color: var(--color-button-active-border);
-    color: var(--color-button-active-border);
-    font-weight: 600;
+    background-color: var(--color-button-active-bg); border-color: var(--color-button-active-border);
+    color: var(--color-button-active-border); font-weight: 600;
+}
+footer p { /* "Legenda Valori Attiva:" text */
+    margin-top: 0; margin-bottom: calc(var(--spacing-unit) / 2); font-weight: bold;
+}
+.legend { /* UL for legend display */
+    list-style: none; padding: 0; margin: 0; display: flex; justify-content: center; flex-wrap: wrap; gap: var(--spacing-unit);
+}
+.legend li { /* Individual legend item (color + text) */
+    display: flex; align-items: center; background-color: #fff;
+    padding: 4px 8px; border-radius: var(--border-radius); box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.legend-color { /* Color swatch */
+    display: inline-block; width: 15px; height: 15px; margin-right: 8px;
+    border-radius: 3px; vertical-align: middle; border: 1px solid rgba(0,0,0,0.1);
 }
 
-/* Legend Display Styles */
-footer p { /* Target the "Legenda Valori Attiva:" text */
-    margin-top: 0;
-    margin-bottom: calc(var(--spacing-unit) / 2);
-    font-weight: bold;
-}
-
-.legend {
-    list-style: none;
-    padding: 0;
-    margin: 0; /* Removed top margin */
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: var(--spacing-unit);
-}
-
-.legend li {
-    display: flex;
-    align-items: center;
-    background-color: #fff; /* Give list items a background */
-    padding: 4px 8px;
-    border-radius: var(--border-radius);
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-}
-
-.legend-color {
-    display: inline-block;
-    width: 15px;
-    height: 15px;
-    margin-right: 8px; /* Increased spacing */
-    border-radius: 3px;
-    vertical-align: middle;
-    border: 1px solid rgba(0,0,0,0.1); /* Subtle border */
-}
-
-/* --- Desktop Adjustments (Mobile First Approach) --- */
-@media (min-width: 768px) { /* Adjust breakpoint as needed */
-    body {
-        font-size: 17px; /* Slightly larger base font on desktop */
-    }
-
-    header {
-        padding: calc(var(--spacing-unit) * 1.5) var(--spacing-unit);
-    }
-
-     header h1 {
-        font-size: 1.8em;
-    }
-
-    #foodListContainer {
-        padding: calc(var(--spacing-unit) * 1.5) var(--spacing-unit);
-    }
-
-    .category-header {
-         padding: var(--spacing-unit) calc(var(--spacing-unit) * 1.5);
-         font-size: 1.1em;
-    }
-    /* .category-header::after { } */ /* Indicator position likely okay */
-
-    /* Revert to side-by-side layout for food items */
+/* --- Desktop Adjustments --- */
+@media (min-width: 768px) {
+    body { font-size: 17px; }
+    header { padding: calc(var(--spacing-unit) * 1.5) var(--spacing-unit); }
+    header h1 { font-size: 1.8em; }
+    #foodListContainer { padding: calc(var(--spacing-unit) * 1.5) var(--spacing-unit); }
+    .category-header { padding: var(--spacing-unit) calc(var(--spacing-unit) * 1.5); font-size: 1.1em; }
     .food-item {
-        grid-template-columns: 1fr auto 180px; /* Name | Value | Bar */
-        grid-template-areas: "name value bar"; /* Single row layout */
-        align-items: center; /* Vertically align items in the row */
-        padding: var(--spacing-unit) calc(var(--spacing-unit) * 1.5);
+        grid-template-columns: 1fr auto 180px; grid-template-areas: "name value bar";
+        align-items: center; padding: var(--spacing-unit) calc(var(--spacing-unit) * 1.5);
     }
-
-    .food-name {
-        align-self: initial; /* Reset alignment */
-    }
-    .food-value {
-         min-width: 40px; /* Ensure space */
-         align-self: initial;
-         font-size: 1em;
-    }
-    .value-bar-container {
-        width: 180px; /* Fixed width for bar area on desktop */
-        height: calc(var(--bar-height) + 2px); /* Slightly taller bar */
-        align-self: initial;
-    }
-
-    .legend-button {
-        font-size: 1em;
-    }
-
-    .legend li {
-         padding: 5px 10px;
-    }
+    .food-name { align-self: initial; }
+    .food-value { min-width: 40px; align-self: initial; font-size: 1em; }
+    .value-bar-container { width: 180px; height: calc(var(--bar-height) + 2px); align-self: initial; }
+    .legend-button { font-size: 1em; }
+    .legend li { padding: 5px 10px; }
 }
