@@ -22,12 +22,17 @@
     </main>
 
     <footer>
-        <p>Legenda Valori:</p>
-        <ul class="legend">
-            <li><span class="legend-color color-red"></span> 0 - 15</li>
-            <li><span class="legend-color color-orange"></span> 16 - 35</li>
-            <li><span class="legend-color color-yellow"></span> 36 - 70</li>
-            <li><span class="legend-color color-green"></span> 71 - 100</li>
+        <!-- Legend Switcher -->
+        <div class="legend-switcher" role="radiogroup" aria-labelledby="legend-choice-label">
+             <span id="legend-choice-label" class="legend-switcher-label">Scegli Legenda:</span>
+             <button type="button" role="radio" aria-checked="true" class="legend-button active" data-legend-id="original">Standard</button>
+             <button type="button" role="radio" aria-checked="false" class="legend-button" data-legend-id="alternative">Alternativa</button>
+        </div>
+
+        <!-- Legend Display -->
+        <p>Legenda Valori Attiva:</p>
+        <ul class="legend" id="footerLegendDisplay">
+            <!-- Contenuto generato da JavaScript -->
         </ul>
     </footer>
 

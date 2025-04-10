@@ -14,6 +14,8 @@
     --bar-height: 18px; /* Slightly smaller for mobile */
     --border-radius: 4px;
     --spacing-unit: 1rem; /* Base spacing unit */
+    --color-button-active-bg: #cce5ff; /* Light blue for active legend button */
+    --color-button-active-border: #0056b3;
 }
 
 /* Basic Reset & Body Styles */
@@ -235,10 +237,54 @@ footer {
     color: var(--color-category-header-text); /* Match category header text */
 }
 
+/* Legend Switcher Styles */
+.legend-switcher {
+    margin-bottom: var(--spacing-unit);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: calc(var(--spacing-unit) / 2);
+    flex-wrap: wrap; /* Allow wrapping on small screens */
+}
+
+.legend-switcher-label {
+    font-weight: 500;
+    margin-right: calc(var(--spacing-unit) / 2);
+}
+
+.legend-button {
+    padding: calc(var(--spacing-unit) / 3) calc(var(--spacing-unit) / 1.5);
+    border: 1px solid var(--color-border);
+    background-color: var(--color-category-bg); /* White background */
+    color: var(--color-category-header-text);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.legend-button:hover {
+    background-color: #f8f9fa; /* Slightly off-white hover */
+}
+
+.legend-button.active {
+    background-color: var(--color-button-active-bg);
+    border-color: var(--color-button-active-border);
+    color: var(--color-button-active-border);
+    font-weight: 600;
+}
+
+/* Legend Display Styles */
+footer p { /* Target the "Legenda Valori Attiva:" text */
+    margin-top: 0;
+    margin-bottom: calc(var(--spacing-unit) / 2);
+    font-weight: bold;
+}
+
 .legend {
     list-style: none;
     padding: 0;
-    margin: calc(var(--spacing-unit) / 2) 0 0 0;
+    margin: 0; /* Removed top margin */
     display: flex;
     justify-content: center;
     flex-wrap: wrap;
@@ -248,15 +294,20 @@ footer {
 .legend li {
     display: flex;
     align-items: center;
+    background-color: #fff; /* Give list items a background */
+    padding: 4px 8px;
+    border-radius: var(--border-radius);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
 .legend-color {
     display: inline-block;
     width: 15px;
     height: 15px;
-    margin-right: 5px;
+    margin-right: 8px; /* Increased spacing */
     border-radius: 3px;
     vertical-align: middle;
+    border: 1px solid rgba(0,0,0,0.1); /* Subtle border */
 }
 
 /* --- Desktop Adjustments (Mobile First Approach) --- */
@@ -282,7 +333,8 @@ footer {
          font-size: 1.1em;
     }
     .category-header::after {
-        right: calc(var(--spacing-unit) * 1.5); /* Adjust indicator position */
+       /* Adjust indicator position if needed on desktop, but likely fine */
+       /* right: calc(var(--spacing-unit) * 1.5); */
     }
 
     /* Revert to side-by-side layout for food items */
@@ -305,5 +357,13 @@ footer {
         width: 180px; /* Fixed width for bar area on desktop */
         height: calc(var(--bar-height) + 2px); /* Slightly taller bar */
         align-self: initial;
+    }
+
+    .legend-button {
+        font-size: 1em;
+    }
+
+    .legend li {
+         padding: 5px 10px;
     }
 }

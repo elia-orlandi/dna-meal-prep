@@ -1,48 +1,86 @@
 document.addEventListener('DOMContentLoaded', () => {
     const foodListContainer = document.getElementById('foodListContainer');
     const searchInput = document.getElementById('searchInput');
-    let allFoodData = []; // To store all data fetched from JSON
+    const legendSwitcher = document.querySelector('.legend-switcher');
+    const footerLegendDisplay = document.getElementById('footerLegendDisplay');
 
-    // --- Fetch data from JSON file ---
-    fetch('alimenti.json')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+    let allFoodData = []; // Store all data
+    let currentlyDisplayedData = []; // Store currently visible data (can be all or filtered)
+
+    // --- Legend Definitions ---
+    const legendDefs = {
+        original: {
+            id: 'original',
+            name: 'Standard',
+            ranges: [
+                { min: 0, max: 15, colorClass: 'color-red', label: '0 - 15' },
+                { min: 16, max: 35, colorClass: 'color-orange', label: '16 - 35' },
+                { min: 36, max: 70, colorClass: 'color-yellow', label: '36 - 70' },
+                { min: 71, max: 100, colorClass: 'color-green', label: '71 - 100' }
+            ]
+        },
+        alternative: {
+            id: 'alternative',
+            name: 'Alternativa',
+            ranges: [
+                { min: 0, max: 19, colorClass: 'color-red', label: '0 - 19' },
+                { min: 20, max: 34, colorClass: 'color-orange', label: '20 - 34' },
+                { min: 35, max: 70, colorClass: 'color-yellow', label: '35 - 70' },
+                { min: 71, max: 100, colorClass: 'color-green', label: '71 - 100' }
+            ]
+        }
+    };
+
+    let activeLegendId = 'original'; // Default legend
+
+    // --- Function to get color class based on value and active legend ---
+    function getColorClassForValue(value, legendId) {
+        const legend = legendDefs[legendId];
+        if (!legend) return ''; // Fallback
+
+        for (const range of legend.ranges) {
+            // Ensure value is treated as a number
+            const numericValue = Number(value);
+            if (isNaN(numericValue)) return ''; // Handle non-numeric values gracefully
+
+            if (numericValue >= range.min && numericValue <= range.max) {
+                return range.colorClass;
             }
-            return response.json();
-        })
-        .then(data => {
-            allFoodData = data;
-            displayFood(allFoodData); // Initial display
-            setupCollapseListeners(); // Add listeners after initial display
-        })
-        .catch(error => {
-            console.error("Errore nel caricamento del file JSON:", error);
-            foodListContainer.innerHTML = `<p class="error-message">Impossibile caricare i dati degli alimenti. Controlla la console per i dettagli.</p>`;
-        });
+        }
+        return ''; // Fallback if value is outside defined ranges
+    }
 
-    // --- Function to determine color based on value ---
-    function getValueColorClass(value) {
-        if (value >= 0 && value <= 15) return 'color-red';
-        if (value >= 16 && value <= 35) return 'color-orange';
-        if (value >= 36 && value <= 70) return 'color-yellow';
-        if (value >= 71 && value <= 100) return 'color-green';
-        return '';
+    // --- Function to update the legend display in the footer ---
+    function updateFooterLegend(legendId) {
+        const legend = legendDefs[legendId];
+        if (!legend || !footerLegendDisplay) return;
+
+        footerLegendDisplay.innerHTML = ''; // Clear existing legend
+
+        legend.ranges.forEach(range => {
+            const li = document.createElement('li');
+            const span = document.createElement('span');
+            span.className = `legend-color ${range.colorClass}`;
+            li.appendChild(span);
+            li.appendChild(document.createTextNode(range.label));
+            footerLegendDisplay.appendChild(li);
+        });
     }
 
     // --- Function to display food items ---
     function displayFood(foodArray) {
+        currentlyDisplayedData = foodArray; // Update the currently displayed data
         foodListContainer.innerHTML = ''; // Clear previous content
 
-        if (foodArray.length === 0 && allFoodData.length > 0) { // Check if filtering resulted in no matches
-             foodListContainer.innerHTML = `<p class="no-results-message">Nessun alimento trovato per "${searchInput.value}".</p>`;
-             return;
-        }
-         if (foodArray.length === 0 && allFoodData.length === 0) { // Initial loading or fetch error state
-            foodListContainer.innerHTML = `<p class="loading-message">Caricamento dati...</p>`; // Or show error if fetch failed earlier
+        // Handle empty states (loading, no results)
+        if (foodArray.length === 0) {
+            if (allFoodData.length === 0) {
+                 foodListContainer.innerHTML = `<p class="loading-message">Caricamento dati...</p>`;
+            } else {
+                 foodListContainer.innerHTML = `<p class="no-results-message">Nessun alimento trovato per "${searchInput.value}".</p>`;
+            }
             return;
         }
-
 
         // Group food items by category
         const groupedByCategory = foodArray.reduce((acc, item) => {
@@ -60,28 +98,24 @@ document.addEventListener('DOMContentLoaded', () => {
         // Create HTML for each category and its items
         sortedCategories.forEach((category, index) => {
             const categorySection = document.createElement('section');
-            // Start collapsed (we'll remove this class on click)
-            categorySection.className = 'category-section collapsed';
-            const categoryId = `category-content-${index}`; // Unique ID for ARIA
+            // Keep existing collapsed state logic if needed, or start expanded
+            categorySection.className = 'category-section collapsed'; // Keep default collapsed
+            const categoryId = `category-content-${index}`;
 
-            // Create Button Header for Accessibility and Interaction
             const categoryHeader = document.createElement('button');
             categoryHeader.className = 'category-header';
-            categoryHeader.setAttribute('aria-expanded', 'false'); // Start collapsed
+            categoryHeader.setAttribute('aria-expanded', 'false');
             categoryHeader.setAttribute('aria-controls', categoryId);
             categoryHeader.textContent = category;
             categorySection.appendChild(categoryHeader);
 
-            // Wrapper for food items (for smooth animation)
             const itemsWrapper = document.createElement('div');
             itemsWrapper.className = 'food-item-wrapper';
-            itemsWrapper.id = categoryId; // ID for ARIA control
-            categorySection.appendChild(itemsWrapper); // Append wrapper AFTER header
+            itemsWrapper.id = categoryId;
+            categorySection.appendChild(itemsWrapper);
 
-            // Sort items within the category alphabetically by name
             groupedByCategory[category].sort((a, b) => a.name.localeCompare(b.name));
 
-            // Add items to the wrapper
             groupedByCategory[category].forEach(item => {
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'food-item';
@@ -98,55 +132,97 @@ document.addEventListener('DOMContentLoaded', () => {
                 barContainer.className = 'value-bar-container';
 
                 const bar = document.createElement('div');
-                bar.className = `value-bar ${getValueColorClass(item.value)}`;
-                bar.style.width = `${item.value}%`;
+                // *** Use the active legend to determine color ***
+                bar.className = `value-bar ${getColorClassForValue(item.value, activeLegendId)}`;
+                 // Set width based on value (ensure it's a number, max 100)
+                const numericValue = Number(item.value);
+                const barWidth = isNaN(numericValue) ? 0 : Math.min(Math.max(numericValue, 0), 100);
+                bar.style.width = `${barWidth}%`;
+
 
                 barContainer.appendChild(bar);
-
                 itemDiv.appendChild(nameSpan);
                 itemDiv.appendChild(valueSpan);
                 itemDiv.appendChild(barContainer);
-
-                itemsWrapper.appendChild(itemDiv); // Add item to the wrapper
+                itemsWrapper.appendChild(itemDiv);
             });
-
             foodListContainer.appendChild(categorySection);
         });
+         // Ensure collapse listeners are set up (using delegation, safe to call multiple times)
+        setupCollapseListeners();
     }
 
-    // --- Function to set up collapse listeners ---
+    // --- Function to set up category collapse listeners (using event delegation) ---
     function setupCollapseListeners() {
-        // Use event delegation on the container for efficiency
+        // Check if listener already exists to avoid duplicates (optional but good practice)
+        if (foodListContainer.dataset.collapseListenerAttached) return;
+
         foodListContainer.addEventListener('click', (event) => {
-            // Check if the clicked element is a category header button
             const header = event.target.closest('.category-header');
-            if (!header) return; // Exit if click wasn't on a header
+            if (!header) return;
 
             const section = header.closest('.category-section');
-            if (!section) return; // Should always find a section, but good practice
+            if (!section) return;
 
             const isCollapsed = section.classList.contains('collapsed');
-
-            // Toggle the class on the section
             section.classList.toggle('collapsed');
-
-            // Update ARIA attribute on the button
             header.setAttribute('aria-expanded', !isCollapsed);
         });
+        foodListContainer.dataset.collapseListenerAttached = 'true'; // Mark as attached
     }
 
+    // --- Fetch Initial Data ---
+    fetch('alimenti.json')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            allFoodData = data;
+            displayFood(allFoodData); // Initial display with default legend
+            updateFooterLegend(activeLegendId); // Display default footer legend
+        })
+        .catch(error => {
+            console.error("Errore nel caricamento del file JSON:", error);
+            foodListContainer.innerHTML = `<p class="error-message">Impossibile caricare i dati degli alimenti. Controlla la console per i dettagli.</p>`;
+        });
 
     // --- Event Listener for Search Input ---
-    searchInput.addEventListener('input', (event) => {
-        const searchTerm = event.target.value.toLowerCase().trim();
-
+    searchInput.addEventListener('input', () => {
+        const searchTerm = searchInput.value.toLowerCase().trim();
         const filteredFood = allFoodData.filter(item =>
             item.name.toLowerCase().includes(searchTerm) ||
             item.category.toLowerCase().includes(searchTerm)
         );
-
-        displayFood(filteredFood);
-        // Note: Listeners are managed by event delegation, no need to re-add them
+        displayFood(filteredFood); // Redisplay filtered data using the active legend
     });
 
+    // --- Event Listener for Legend Switcher ---
+    if (legendSwitcher) {
+        legendSwitcher.addEventListener('click', (event) => {
+            const button = event.target.closest('.legend-button[data-legend-id]');
+            if (!button || button.classList.contains('active')) return; // Exit if click wasn't on an inactive legend button
+
+            const selectedLegendId = button.dataset.legendId;
+
+            // Update active state
+            activeLegendId = selectedLegendId;
+
+            // Update button visual state and ARIA attributes
+            legendSwitcher.querySelectorAll('.legend-button').forEach(btn => {
+                const isActive = btn.dataset.legendId === activeLegendId;
+                btn.classList.toggle('active', isActive);
+                btn.setAttribute('aria-checked', isActive);
+            });
+
+            // Re-render the list with the new legend colors
+            displayFood(currentlyDisplayedData); // Use the data currently shown (filtered or all)
+
+            // Update the footer legend display
+            updateFooterLegend(activeLegendId);
+
+        });
+    }
 });
