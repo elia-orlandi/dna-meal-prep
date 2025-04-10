@@ -128,6 +128,7 @@ header h1 {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    color: var(--color-text);
 }
 .suggestion-item:last-child {
     border-bottom: none;
