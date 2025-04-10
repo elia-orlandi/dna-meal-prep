@@ -2,73 +2,61 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- DOM Element References ---
     const foodListContainer = document.getElementById('foodListContainer');
     const searchInput = document.getElementById('searchInput');
+    const suggestionsContainer = document.getElementById('suggestionsContainer');
+    const suggestionsList = document.getElementById('suggestionsList'); // Get the UL element
     const legendSwitcher = document.querySelector('.legend-switcher');
     const footerLegendDisplay = document.getElementById('footerLegendDisplay');
 
     // --- Application State ---
     let state = {
         allFoodData: [],
-        currentlyDisplayedData: [],
+        currentlyDisplayedData: [], // Data shown in the main list
         activeLegendId: 'original',
         isDataLoaded: false,
-        isCollapseListenerAttached: false
+        isCollapseListenerAttached: false,
+        activeSuggestionIndex: -1 // For keyboard navigation
     };
 
-    // --- Legend Definitions ---
+    // --- Constants ---
+    const MAX_SUGGESTIONS = 7; // Max suggestions to show
+
+    // --- Legend Definitions (Unchanged) ---
     const legendDefs = {
-        original: {
-            id: 'original',
-            name: 'Standard',
-            ranges: [
-                { min: 0, max: 15, colorClass: 'color-red', label: '0 - 15' },
-                { min: 16, max: 35, colorClass: 'color-orange', label: '16 - 35' },
-                { min: 36, max: 70, colorClass: 'color-yellow', label: '36 - 70' },
-                { min: 71, max: 100, colorClass: 'color-green', label: '71 - 100' }
-            ]
-        },
-        alternative: {
-            id: 'alternative',
-            name: 'Alternativa',
-            ranges: [
-                { min: 0, max: 19, colorClass: 'color-red', label: '0 - 19' },
-                { min: 20, max: 34, colorClass: 'color-orange', label: '20 - 34' },
-                { min: 35, max: 70, colorClass: 'color-yellow', label: '35 - 70' },
-                { min: 71, max: 100, colorClass: 'color-green', label: '71 - 100' }
-            ]
-        }
+        original: { /* ... */ },
+        alternative: { /* ... */ }
     };
+     // --- Populate legendDefs (same as before) ---
+    legendDefs.original.ranges = [
+        { min: 0, max: 15, colorClass: 'color-red', label: '0 - 15' },
+        { min: 16, max: 35, colorClass: 'color-orange', label: '16 - 35' },
+        { min: 36, max: 70, colorClass: 'color-yellow', label: '36 - 70' },
+        { min: 71, max: 100, colorClass: 'color-green', label: '71 - 100' }
+    ];
+    legendDefs.alternative.ranges = [
+        { min: 0, max: 19, colorClass: 'color-red', label: '0 - 19' },
+        { min: 20, max: 34, colorClass: 'color-orange', label: '20 - 34' },
+        { min: 35, max: 70, colorClass: 'color-yellow', label: '35 - 70' },
+        { min: 71, max: 100, colorClass: 'color-green', label: '71 - 100' }
+    ];
 
-    // --- Utility Functions ---
 
-    /**
-     * Gets the appropriate CSS color class for a value based on the active legend.
-     * @param {number|string} value - The food item's value.
-     * @param {string} legendId - The ID of the currently active legend ('original' or 'alternative').
-     * @returns {string} The CSS color class name.
-     */
+    // --- Utility Functions (getColorClassForValue, groupByCategory - Unchanged) ---
     function getColorClassForValue(value, legendId) {
         const legend = legendDefs[legendId];
         if (!legend) return '';
-
         const numericValue = Number(value);
-        if (isNaN(numericValue)) return ''; // Handle non-numeric values
-
+        if (isNaN(numericValue)) return '';
         for (const range of legend.ranges) {
             if (numericValue >= range.min && numericValue <= range.max) {
                 return range.colorClass;
             }
         }
-        return ''; // Fallback
+        return '';
     }
 
-    /**
-     * Groups an array of food items by their category.
-     * @param {Array<Object>} foodArray - The array of food items.
-     * @returns {Object} An object where keys are category names and values are arrays of food items.
-     */
     function groupByCategory(foodArray) {
          return foodArray.reduce((acc, item) => {
-            const category = item.category || 'Senza Categoria'; // Fallback category
+            const category = item.category || 'Senza Categoria';
             if (!acc[category]) {
                 acc[category] = [];
             }
@@ -79,16 +67,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- DOM Update Functions ---
 
-    /**
-     * Updates the legend display in the footer based on the selected legend ID.
-     * @param {string} legendId - The ID of the legend to display.
-     */
     function updateFooterLegend(legendId) {
         const legend = legendDefs[legendId];
         if (!legend || !footerLegendDisplay) return;
-
-        footerLegendDisplay.innerHTML = ''; // Clear existing legend
-
+        footerLegendDisplay.innerHTML = '';
         legend.ranges.forEach(range => {
             const li = document.createElement('li');
             const span = document.createElement('span');
@@ -99,20 +81,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    /**
-     * Renders the list of food items in the DOM, grouped by category.
-     * @param {Array<Object>} foodArray - The array of food items to display.
-     */
     function renderFoodList(foodArray) {
-        state.currentlyDisplayedData = foodArray; // Update state
-        foodListContainer.innerHTML = ''; // Clear previous content
+        state.currentlyDisplayedData = foodArray;
+        foodListContainer.innerHTML = '';
 
-        // Handle empty states
         if (foodArray.length === 0) {
-            if (!state.isDataLoaded) { // Still loading?
+            if (!state.isDataLoaded) {
                  foodListContainer.innerHTML = `<p class="loading-message">Caricamento dati...</p>`;
-            } else { // Loaded, but filter returned no results
-                 foodListContainer.innerHTML = `<p class="no-results-message">Nessun alimento trovato per "${searchInput.value}".</p>`;
+            } else {
+                 // Avoid showing "no results" if the search input is empty after selecting a suggestion
+                 const searchTerm = searchInput.value.trim();
+                 foodListContainer.innerHTML = `<p class="no-results-message">Nessun alimento trovato${searchTerm ? ` per "${searchTerm}"` : ''}.</p>`;
             }
             return;
         }
@@ -120,198 +99,294 @@ document.addEventListener('DOMContentLoaded', () => {
         const groupedData = groupByCategory(foodArray);
         const sortedCategories = Object.keys(groupedData).sort();
 
-        // Create and append category sections
         sortedCategories.forEach((category, index) => {
             const categorySection = createCategorySection(category, groupedData[category], index);
             foodListContainer.appendChild(categorySection);
         });
 
-        // Ensure collapse listeners are attached (only needs to be done once)
         setupCollapseListeners();
     }
 
-     /**
-     * Creates a single category section element with its header and items.
-     * @param {string} categoryName - The name of the category.
-     * @param {Array<Object>} items - Array of food items in this category.
-     * @param {number} index - The index of the category (for unique IDs).
-     * @returns {HTMLElement} The created category section element.
-     */
-    function createCategorySection(categoryName, items, index) {
+     function createCategorySection(categoryName, items, index) {
         const section = document.createElement('section');
-        section.className = 'category-section collapsed'; // Default to collapsed
+        section.className = 'category-section collapsed';
         const contentId = `category-content-${index}`;
-
-        // Header (Button)
         const header = document.createElement('button');
         header.className = 'category-header';
         header.setAttribute('aria-expanded', 'false');
         header.setAttribute('aria-controls', contentId);
         header.textContent = categoryName;
         section.appendChild(header);
-
-        // Items Wrapper
         const itemsWrapper = document.createElement('div');
         itemsWrapper.className = 'food-item-wrapper';
         itemsWrapper.id = contentId;
         section.appendChild(itemsWrapper);
-
-        // Sort items within category
         items.sort((a, b) => a.name.localeCompare(b.name));
-
-        // Create and append item elements
         items.forEach(item => {
             const itemElement = createFoodItemElement(item);
             itemsWrapper.appendChild(itemElement);
         });
-
         return section;
     }
 
-    /**
-     * Creates a single food item element (the row with name, value, and bar).
-     * @param {Object} item - The food item data.
-     * @returns {HTMLElement} The created food item div element.
-     */
     function createFoodItemElement(item) {
         const itemDiv = document.createElement('div');
         itemDiv.className = 'food-item';
-
         const nameSpan = document.createElement('span');
         nameSpan.className = 'food-name';
         nameSpan.textContent = item.name;
-
         const valueSpan = document.createElement('span');
         valueSpan.className = 'food-value';
         valueSpan.textContent = item.value;
-
         const barContainer = document.createElement('div');
         barContainer.className = 'value-bar-container';
-
         const bar = document.createElement('div');
         bar.className = `value-bar ${getColorClassForValue(item.value, state.activeLegendId)}`;
-
         const numericValue = Number(item.value);
         const barWidth = isNaN(numericValue) ? 0 : Math.min(Math.max(numericValue, 0), 100);
         bar.style.width = `${barWidth}%`;
-
         barContainer.appendChild(bar);
         itemDiv.appendChild(nameSpan);
         itemDiv.appendChild(valueSpan);
         itemDiv.appendChild(barContainer);
-
         return itemDiv;
     }
 
-    // --- Event Handlers ---
-
     /**
-     * Handles input events on the search field, filtering and re-rendering the list.
+     * Renders the autocomplete suggestions based on matches.
+     * @param {Array<Object>} matches - Array of food items matching the search term.
+     * @param {string} searchTerm - The current search term for highlighting.
      */
-    function handleSearch() {
-        const searchTerm = searchInput.value.toLowerCase().trim();
-        const filteredFood = state.allFoodData.filter(item =>
-            item.name.toLowerCase().includes(searchTerm) ||
-            item.category.toLowerCase().includes(searchTerm) // Optional: search category too
-        );
-        renderFoodList(filteredFood);
+    function renderSuggestions(matches, searchTerm) {
+        suggestionsList.innerHTML = ''; // Clear previous suggestions
+        state.activeSuggestionIndex = -1; // Reset keyboard navigation index
+        searchInput.removeAttribute('aria-activedescendant');
+
+        if (matches.length === 0 || !searchTerm) {
+            suggestionsContainer.classList.remove('visible');
+            return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        matches.slice(0, MAX_SUGGESTIONS).forEach((item, index) => {
+            const li = document.createElement('li');
+            li.className = 'suggestion-item';
+            li.setAttribute('role', 'option');
+            li.id = `suggestion-${index}`; // ID for aria-activedescendant
+            li.dataset.foodName = item.name; // Store full name for selection
+
+            // Highlight the matching part
+            const regex = new RegExp(`(${searchTerm.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi');
+            li.innerHTML = item.name.replace(regex, '<mark>$1</mark>');
+
+            fragment.appendChild(li);
+        });
+
+        suggestionsList.appendChild(fragment);
+        suggestionsContainer.classList.add('visible');
+    }
+
+    /** Hides the suggestions dropdown. */
+    function hideSuggestions() {
+        suggestionsContainer.classList.remove('visible');
+        state.activeSuggestionIndex = -1;
+         searchInput.removeAttribute('aria-activedescendant');
     }
 
     /**
-     * Handles clicks within the food list container, specifically for toggling category collapse.
-     * Uses event delegation.
-     * @param {Event} event - The click event object.
+     * Selects a suggestion, updates the input, hides suggestions, and filters the main list.
+     * @param {string} foodName - The name of the food item selected.
      */
+    function selectSuggestion(foodName) {
+        searchInput.value = foodName; // Update input field
+        hideSuggestions();
+
+        // Filter the main list to show only the selected item(s)
+        const exactMatches = state.allFoodData.filter(item =>
+            item.name.toLowerCase() === foodName.toLowerCase()
+        );
+        renderFoodList(exactMatches.length > 0 ? exactMatches : []); // Show match or empty
+    }
+
+    /**
+     * Updates the visual state (active class) of suggestion items for keyboard navigation.
+     */
+    function updateActiveSuggestion() {
+        const items = suggestionsList.querySelectorAll('.suggestion-item');
+        items.forEach((item, index) => {
+            if (index === state.activeSuggestionIndex) {
+                item.classList.add('active');
+                item.scrollIntoView({ block: 'nearest' }); // Keep item visible
+                searchInput.setAttribute('aria-activedescendant', item.id);
+            } else {
+                item.classList.remove('active');
+            }
+        });
+    }
+
+
+    // --- Event Handlers ---
+
+    /** Handles input in the search field: fetches suggestions. */
+    function handleSearchInput() {
+        const searchTerm = searchInput.value.toLowerCase().trim();
+
+        if (!searchTerm) {
+            renderSuggestions([], searchTerm);
+            // Optionally: Show all items again when search is cleared
+            // renderFoodList(state.allFoodData);
+            return;
+        }
+
+        // Find matches (case-insensitive)
+        const matches = state.allFoodData.filter(item =>
+            item.name.toLowerCase().includes(searchTerm)
+        ).sort((a,b) => a.name.localeCompare(b.name)); // Sort matches alphabetically
+
+        renderSuggestions(matches, searchTerm);
+    }
+
+    /** Handles clicks on the suggestions list. */
+    function handleSuggestionClick(event) {
+        const targetItem = event.target.closest('.suggestion-item');
+        if (targetItem && targetItem.dataset.foodName) {
+            selectSuggestion(targetItem.dataset.foodName);
+        }
+    }
+
+    /** Handles keyboard navigation within the search input and suggestions. */
+    function handleSearchKeyDown(event) {
+        const { key } = event;
+        const items = suggestionsList.querySelectorAll('.suggestion-item');
+        if (!suggestionsContainer.classList.contains('visible') || items.length === 0) {
+             // If suggestions not visible, let Enter trigger a normal filter (optional)
+            if (key === 'Enter') {
+                 event.preventDefault(); // Prevent form submission if inside a form
+                 handleSearchSubmit(); // Define this if needed
+            }
+            return;
+        }
+
+
+        switch (key) {
+            case 'ArrowDown':
+                event.preventDefault(); // Prevent cursor move
+                state.activeSuggestionIndex = (state.activeSuggestionIndex + 1) % items.length;
+                updateActiveSuggestion();
+                break;
+            case 'ArrowUp':
+                event.preventDefault(); // Prevent cursor move
+                state.activeSuggestionIndex = (state.activeSuggestionIndex - 1 + items.length) % items.length;
+                updateActiveSuggestion();
+                break;
+            case 'Enter':
+                event.preventDefault(); // Prevent form submission
+                if (state.activeSuggestionIndex > -1 && items[state.activeSuggestionIndex]) {
+                    selectSuggestion(items[state.activeSuggestionIndex].dataset.foodName);
+                } else {
+                     // Optional: If Enter pressed without active suggestion, filter by current input text
+                     handleSearchSubmit();
+                }
+                break;
+            case 'Escape':
+                event.preventDefault();
+                hideSuggestions();
+                break;
+        }
+    }
+
+    /** Handles filtering when Enter is pressed without an active suggestion (optional) */
+     function handleSearchSubmit() {
+        const searchTerm = searchInput.value.trim();
+        hideSuggestions();
+        if (searchTerm) {
+            const matches = state.allFoodData.filter(item =>
+                item.name.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+            renderFoodList(matches);
+        } else {
+            renderFoodList(state.allFoodData); // Show all if search is empty
+        }
+    }
+
+
+    /** Handles global clicks to hide suggestions when clicking outside. */
+    function handleGlobalClick(event) {
+        if (!searchInput.contains(event.target) && !suggestionsContainer.contains(event.target)) {
+            hideSuggestions();
+        }
+    }
+
+    // --- Collapse and Legend Handlers (Unchanged) ---
     function handleCollapse(event) {
         const header = event.target.closest('.category-header');
-        if (!header) return; // Click wasn't on a header
-
+        if (!header) return;
         const section = header.closest('.category-section');
         if (!section) return;
-
         const isCollapsed = section.classList.contains('collapsed');
         section.classList.toggle('collapsed');
         header.setAttribute('aria-expanded', !isCollapsed);
     }
 
-    /**
-     * Handles clicks on the legend switcher buttons.
-     * @param {Event} event - The click event object.
-     */
     function handleLegendSwitch(event) {
         const button = event.target.closest('.legend-button[data-legend-id]');
-        // Exit if click wasn't on an *inactive* legend button
         if (!button || button.classList.contains('active')) return;
-
         const selectedLegendId = button.dataset.legendId;
-
-        // Update state
         state.activeLegendId = selectedLegendId;
-
-        // Update button visuals and ARIA states
         legendSwitcher.querySelectorAll('.legend-button').forEach(btn => {
             const isActive = btn.dataset.legendId === state.activeLegendId;
             btn.classList.toggle('active', isActive);
             btn.setAttribute('aria-checked', isActive);
         });
-
-        // Re-render the currently visible list with new colors
         renderFoodList(state.currentlyDisplayedData);
-
-        // Update the footer legend text
         updateFooterLegend(state.activeLegendId);
     }
 
     // --- Event Listener Setup ---
-
-    /** Sets up the category collapse listener using event delegation. */
     function setupCollapseListeners() {
-        // Prevent adding multiple listeners if called again
         if (state.isCollapseListenerAttached) return;
-
         foodListContainer.addEventListener('click', handleCollapse);
         state.isCollapseListenerAttached = true;
     }
 
-    /** Sets up all necessary event listeners. */
     function setupEventListeners() {
-        searchInput.addEventListener('input', handleSearch);
+        // Search and Suggestions
+        searchInput.addEventListener('input', handleSearchInput);
+        searchInput.addEventListener('keydown', handleSearchKeyDown);
+        suggestionsContainer.addEventListener('click', handleSuggestionClick); // Use delegation
+        document.addEventListener('click', handleGlobalClick); // Hide on click outside
+
+        // Legend Switcher
         if (legendSwitcher) {
             legendSwitcher.addEventListener('click', handleLegendSwitch);
         }
-        // Collapse listeners are set up *after* the first render in renderFoodList
+        // Collapse listeners are attached after first render
     }
 
     // --- Initialization ---
-
-    /** Fetches data and initializes the application. */
     function initializeApp() {
-        renderFoodList([]); // Show loading message initially
+        renderFoodList([]); // Show loading
         fetch('alimenti.json')
             .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 return response.json();
             })
             .then(data => {
                 state.allFoodData = data;
                 state.isDataLoaded = true;
-                renderFoodList(state.allFoodData); // Render initial full list
-                updateFooterLegend(state.activeLegendId); // Show default footer legend
+                renderFoodList(state.allFoodData);
+                updateFooterLegend(state.activeLegendId);
             })
             .catch(error => {
                 console.error("Errore nel caricamento del file JSON:", error);
                 foodListContainer.innerHTML = `<p class="error-message">Impossibile caricare i dati. Controlla la console.</p>`;
-                state.isDataLoaded = true; // Mark as loaded even if error occurred
+                state.isDataLoaded = true; // Still "loaded" even if error
             })
             .finally(() => {
-                 // Set up listeners regardless of fetch success/failure
-                setupEventListeners();
+                setupEventListeners(); // Setup listeners AFTER fetch attempt
             });
     }
 
-    // --- Start the application ---
+    // --- Start ---
     initializeApp();
-
 });
