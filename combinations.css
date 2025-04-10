@@ -1,0 +1,241 @@
+/* combinations.css - Styles for the Combinations feature */
+
+/* Modal for the Form */
+.combination-form-modal {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 1.5rem 2rem;
+    min-width: clamp(300px, 80vw, 600px); /* Responsive width */
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+.combination-form-modal::backdrop {
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+/* Form Styles */
+.combination-form .form-group {
+    margin-bottom: 1rem;
+}
+.combination-form label {
+    display: block;
+    margin-bottom: 0.3rem;
+    font-weight: bold;
+    font-size: 0.9em;
+}
+.combination-form input[type="text"],
+.combination-form select,
+.combination-form textarea {
+    width: 100%;
+    padding: 0.6rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1em;
+}
+.combination-form textarea {
+    resize: vertical;
+}
+.combination-form .radio-group {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+.combination-form .radio-group label {
+    font-weight: normal; /* Labels for radios are normal */
+    margin-bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    cursor: pointer;
+}
+
+/* Block Editor Styles */
+.blocks-container {
+    border: 1px dashed #eee;
+    padding: 1rem;
+    margin-top: 0.5rem;
+    margin-bottom: 1rem;
+    background-color: #fafafa;
+    border-radius: 4px;
+}
+.block-editor {
+    border: 1px solid #e0e0e0;
+    padding: 0.8rem;
+    margin-bottom: 0.8rem;
+    background-color: #fff;
+    border-radius: 4px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.block-editor select[name="blockType"] {
+    margin-bottom: 0.5rem;
+}
+.block-editor select[multiple] {
+    min-height: 100px; /* Ensure multi-select is usable */
+}
+.button-remove-block {
+    margin-top: 0.5rem;
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85em;
+    float: right; /* Position remove button */
+}
+.button-remove-block:hover {
+    background-color: #f1b0b7;
+}
+
+/* Form Actions */
+.combination-form .form-actions {
+    margin-top: 1.5rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.8rem;
+}
+.combination-form .form-actions button {
+    padding: 0.7rem 1.2rem;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+}
+.combination-form .form-actions button[type="submit"] {
+    background-color: var(--color-header-bg); /* Use theme color */
+    color: var(--color-header-text);
+}
+.combination-form .form-actions button[type="button"] {
+    background-color: #ccc;
+    color: #333;
+}
+
+/* Combinations List Display Styles */
+.section-divider {
+    border: none;
+    border-top: 2px solid #eee;
+    margin: 2rem 0;
+}
+#combinationsArea h2 {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    color: var(--color-header-bg);
+}
+.combinations-list-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+.combination-category-section {
+    margin-bottom: 2rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+    overflow: hidden; /* Contain borders */
+}
+.combination-category-header {
+    background-color: var(--color-category-header-bg);
+    color: var(--color-category-header-text);
+    padding: 0.8rem 1.2rem;
+    margin: 0;
+    font-size: 1.2em;
+    border-bottom: 1px solid #e0e0e0;
+}
+.combination-category-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.combination-view-item {
+    padding: 1rem 1.2rem;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start; /* Align actions top right */
+    gap: 1rem;
+}
+.combination-view-item:last-child {
+    border-bottom: none;
+}
+
+.combination-content {
+    flex-grow: 1; /* Take available space */
+}
+
+.block-view {
+    margin-bottom: 0.5rem;
+}
+.block-view strong {
+    color: #555;
+}
+.custom-description {
+    font-style: italic;
+    margin: 0 0 0.5rem 0;
+}
+.combination-notes {
+    font-size: 0.9em;
+    color: #666;
+    margin-top: 0.5rem;
+    margin-bottom: 0;
+    border-left: 3px solid #eee;
+    padding-left: 0.5rem;
+}
+.combination-notes em {
+    font-style: normal;
+    font-weight: bold;
+}
+
+.combination-separator {
+    text-align: center;
+    color: #888;
+    font-weight: bold;
+    padding: 0.8rem;
+    background-color: #f9f9f9;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.combination-actions {
+    display: flex;
+    flex-direction: column; /* Stack buttons */
+    gap: 0.4rem;
+    flex-shrink: 0; /* Prevent shrinking */
+}
+.combination-actions button {
+    background: none;
+    border: 1px solid transparent;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85em;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+.combination-actions .button-edit {
+    border-color: #a0c4ff;
+    color: #0056b3;
+}
+.combination-actions .button-edit:hover {
+    background-color: #e7f1ff;
+}
+.combination-actions .button-delete {
+    border-color: #f5c6cb;
+    color: #721c24;
+}
+.combination-actions .button-delete:hover {
+    background-color: #f8d7da;
+}
+
+/* Global Actions (Add Combo Button) */
+.global-actions {
+    text-align: center;
+    margin-top: 1rem;
+    padding-bottom: 0.5rem; /* Space below button if header is sticky */
+}
+.global-actions button {
+     padding: 0.7rem 1.5rem;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    background-color: var(--color-green); /* Use theme color */
+    color: #fff;
+}
