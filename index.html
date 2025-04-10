@@ -10,9 +10,14 @@
     <header>
         <h1>Mappa Alimentare</h1>
         <p class="subtitle">Dati scientifici aggiornati al 16-02-2015 (Release 5.1)</p>
+        <!-- Modified search container -->
         <div class="search-container">
             <label for="searchInput" class="sr-only">Cerca alimento</label>
-            <input type="search" id="searchInput" placeholder="Cerca un alimento..." aria-label="Cerca alimento">
+            <input type="search" id="searchInput" placeholder="Cerca un alimento..." aria-label="Cerca alimento" autocomplete="off" aria-haspopup="listbox" aria-controls="suggestionsList">
+            <!-- Suggestions container -->
+            <div id="suggestionsContainer" class="suggestions-container" role="listbox" aria-labelledby="searchInput">
+                 <ul id="suggestionsList" class="suggestions-list"></ul>
+            </div>
         </div>
     </header>
 

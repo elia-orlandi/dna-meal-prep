@@ -16,6 +16,7 @@
     --spacing-unit: 1rem; /* Base spacing unit */
     --color-button-active-bg: #cce5ff; /* Light blue for active legend button */
     --color-button-active-border: #0056b3;
+    --color-suggestion-hover-bg: #eee;
 }
 
 /* Basic Reset & Body Styles */
@@ -69,9 +70,11 @@ header h1 {
     margin: 0 0 calc(var(--spacing-unit) / 2) 0;
 }
 
+/* --- Search & Suggestions Styles --- */
 .search-container {
     margin: 0 auto; /* Center search */
     max-width: 500px; /* Limit search width */
+    position: relative; /* Crucial for positioning suggestions */
 }
 
 #searchInput {
@@ -82,11 +85,67 @@ header h1 {
     font-size: 1em;
     appearance: none; /* Remove default mobile styles */
     -webkit-appearance: none;
+    /* Ensure input is above suggestions if needed, though z-index on container is usually enough */
+    /* position: relative;
+    z-index: 101; */
 }
 #searchInput:focus {
     outline: 2px solid var(--color-header-text);
     outline-offset: 2px;
 }
+
+.suggestions-container {
+    position: absolute;
+    top: 100%; /* Position below the input */
+    left: 0;
+    right: 0;
+    background-color: var(--color-category-bg); /* White background */
+    border: 1px solid var(--color-border);
+    border-top: none; /* Avoid double border */
+    border-radius: 0 0 var(--border-radius) var(--border-radius);
+    max-height: 250px; /* Limit height */
+    overflow-y: auto; /* Add scroll if needed */
+    z-index: 100; /* Ensure it's above main content */
+    display: none; /* Hidden by default */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.suggestions-container.visible {
+    display: block; /* Show when needed */
+}
+
+.suggestions-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.suggestion-item {
+    padding: calc(var(--spacing-unit) / 1.8) var(--spacing-unit);
+    cursor: pointer;
+    font-size: 0.95em;
+    border-bottom: 1px solid #f0f0f0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.suggestion-item:hover,
+.suggestion-item.active { /* Style for hover and keyboard navigation */
+    background-color: var(--color-suggestion-hover-bg);
+    color: var(--color-text);
+}
+/* Style to highlight matching part of text */
+.suggestion-item mark {
+    background-color: transparent;
+    font-weight: bold;
+    color: inherit;
+    padding: 0;
+}
+
 
 /* Main Content Area */
 #foodListContainer {
@@ -332,10 +391,7 @@ footer p { /* Target the "Legenda Valori Attiva:" text */
          padding: var(--spacing-unit) calc(var(--spacing-unit) * 1.5);
          font-size: 1.1em;
     }
-    .category-header::after {
-       /* Adjust indicator position if needed on desktop, but likely fine */
-       /* right: calc(var(--spacing-unit) * 1.5); */
-    }
+    /* .category-header::after { } */ /* Indicator position likely okay */
 
     /* Revert to side-by-side layout for food items */
     .food-item {
