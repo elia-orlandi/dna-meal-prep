@@ -10,6 +10,7 @@ const blockTypeLabels = {
 };
 
 let _allFoodItemsCache = []; // Cache for food items passed from main script
+let _categoriesCache = []; // Cache for configurable categories
 
 /**
  * Sets the food items data cache used by UI functions.
@@ -19,6 +20,14 @@ function setFoodItemCache(foodItems) {
     _allFoodItemsCache = foodItems || [];
     // Sort cache alphabetically for consistent dropdowns
     _allFoodItemsCache.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Sets the configurable categories cache.
+ * @param {Array<string>} categories - Array of category names/codes.
+ */
+function setCategoriesCache(categories) {
+    _categoriesCache = categories || ['A', 'B', 'C', 'D']; // Default if not provided
 }
 
 /**
@@ -54,7 +63,10 @@ function createCombinationViewElement(combination, onDelete, onEdit) {
             blockDiv.appendChild(blockLabel);
 
             const foodListSpan = document.createElement('span');
-            foodListSpan.textContent = block.selectedFoods.join(' / '); // Display selected foods
+             // Handle potential empty selectedFoods array gracefully
+             foodListSpan.textContent = block.selectedFoods && block.selectedFoods.length > 0
+                ? block.selectedFoods.join(' / ')
+                : '(Nessun alimento selezionato)';
             blockDiv.appendChild(foodListSpan);
 
             contentDiv.appendChild(blockDiv);
@@ -69,7 +81,8 @@ function createCombinationViewElement(combination, onDelete, onEdit) {
     if (combination.notes) {
         const notesP = document.createElement('p');
         notesP.className = 'combination-notes';
-        notesP.innerHTML = `<em>Note:</em> ${combination.notes}`; // Use innerHTML carefully or sanitize
+        notesP.innerHTML = `<em>Note:</em> `; // Create em tag first
+        notesP.appendChild(document.createTextNode(combination.notes)); // Append notes as text node to prevent XSS if notes were user-controlled HTML
         contentDiv.appendChild(notesP);
     }
 
@@ -91,7 +104,10 @@ function createCombinationViewElement(combination, onDelete, onEdit) {
     deleteButton.textContent = 'Elimina';
     deleteButton.className = 'button-delete';
     deleteButton.onclick = () => {
-        if (confirm(`Eliminare questa combinazione?\n(${combination.type === 'custom' ? combination.description.substring(0, 30)+'...' : 'Combinazione strutturata'})`)) {
+         const confirmationText = combination.type === 'custom'
+            ? (combination.description || '').substring(0, 30) + '...'
+            : `combinazione strutturata (${combination.category})`;
+        if (confirm(`Eliminare questa combinazione?\n(${confirmationText})`)) {
             onDelete(combination.id);
         }
     };
@@ -126,8 +142,16 @@ function displayCombinationsList(combinationsArray, containerElement, onDelete, 
         return acc;
     }, {});
 
-    // Sort categories (A, B, C, D...)
-    const sortedCategories = Object.keys(grouped).sort();
+    // Sort categories based on the configured order if possible, otherwise alphabetically
+     const sortedCategories = Object.keys(grouped).sort((a, b) => {
+        const indexA = _categoriesCache.indexOf(a);
+        const indexB = _categoriesCache.indexOf(b);
+        if (indexA !== -1 && indexB !== -1) return indexA - indexB; // Sort by config order
+        if (indexA !== -1) return -1; // Configured categories first
+        if (indexB !== -1) return 1;
+        return a.localeCompare(b); // Alphabetical for others
+    });
+
 
     const fragment = document.createDocumentFragment();
 
@@ -165,7 +189,7 @@ function displayCombinationsList(combinationsArray, containerElement, onDelete, 
 
 
 /**
- * Creates the HTML form for adding/editing a combination.
+ * Creates the HTML form for adding/editing a combination with improved block UX.
  * @param {Object|null} combinationToEdit - The combination object to edit, or null for a new one.
  * @param {Function} onSave - Callback function when the form is saved (passes the new/updated combination data).
  * @param {Function} onCancel - Callback function when the form is cancelled.
@@ -179,7 +203,7 @@ function createCombinationFormElement(combinationToEdit, onSave, onCancel) {
     const isEditing = combinationToEdit !== null;
     const currentData = combinationToEdit || { // Default values for new combo
         id: `combo_${Date.now()}`, // Generate new ID
-        category: 'A',
+        category: _categoriesCache[0] || 'A', // Use first configured category
         type: 'structured',
         notes: '',
         blocks: [],
@@ -188,7 +212,7 @@ function createCombinationFormElement(combinationToEdit, onSave, onCancel) {
 
     form.dataset.editingId = isEditing ? currentData.id : '';
 
-    // --- Category Selection ---
+    // --- Category Selection (Now uses _categoriesCache) ---
     const categoryGroup = document.createElement('div');
     categoryGroup.className = 'form-group';
     const categoryLabel = document.createElement('label');
@@ -197,7 +221,7 @@ function createCombinationFormElement(combinationToEdit, onSave, onCancel) {
     const categorySelect = document.createElement('select');
     categorySelect.id = `combo-cat-${currentData.id}`;
     categorySelect.name = 'category';
-    ['A', 'B', 'C', 'D'].forEach(cat => {
+    _categoriesCache.forEach(cat => { // Use cached categories
         const option = document.createElement('option');
         option.value = cat;
         option.textContent = cat;
@@ -270,16 +294,17 @@ function createCombinationFormElement(combinationToEdit, onSave, onCancel) {
     const addBlockButton = document.createElement('button');
     addBlockButton.type = 'button';
     addBlockButton.textContent = '+ Aggiungi Blocco';
-    addBlockButton.onclick = () => addBlockElement(blocksContainer, currentData.id);
+    addBlockButton.className = 'add-block-button'; // Add class for styling
+    addBlockButton.onclick = () => addBlockElement(blocksContainer); // Just add a default block
     structuredContentContainer.appendChild(addBlockButton);
 
     // Populate existing blocks if editing
     if (isEditing && currentData.type === 'structured') {
         currentData.blocks.forEach(block => {
-            addBlockElement(blocksContainer, currentData.id, block.blockType, block.selectedFoods);
+            addBlockElement(blocksContainer, block.blockType, block.selectedFoods);
         });
-    } else if (!isEditing) {
-         addBlockElement(blocksContainer, currentData.id); // Add one block by default for new structured combos
+    } else if (!isEditing && currentData.type === 'structured') { // Only add default block if creating structured
+         addBlockElement(blocksContainer); // Add one block by default for new structured combos
     }
 
 
@@ -340,23 +365,34 @@ function createCombinationFormElement(combinationToEdit, onSave, onCancel) {
                  alert("Aggiungere almeno un blocco per la combinazione strutturata.");
                  return; // Prevent saving without blocks
              }
+
+             let blockError = false; // Flag to stop submission if any block is invalid
              blockElements.forEach(blockEl => {
-                const blockTypeSelect = blockEl.querySelector('select[name="blockType"]');
-                const foodSelect = blockEl.querySelector('select[name="selectedFoods"]');
-                if (blockTypeSelect && foodSelect) {
-                     const selectedFoods = Array.from(foodSelect.selectedOptions).map(opt => opt.value);
-                     if(selectedFoods.length === 0){
-                         // Optionally alert or just skip empty blocks
-                         console.warn(`Blocco ${blockTypeSelect.value} senza alimenti selezionati, verrà ignorato.`);
-                         return; // Skip block if no food selected
-                     }
-                     savedData.blocks.push({
-                        blockType: blockTypeSelect.value,
-                        selectedFoods: selectedFoods
-                    });
-                }
-            });
-             if(savedData.blocks.length === 0){
+                 if (blockError) return; // Don't process further if an error was found
+
+                 // Retrieve data stored on the element
+                 const blockType = blockEl.dataset.blockType;
+                 const selectedFoods = blockEl._selectedFoods || []; // Get from property
+
+                 if (selectedFoods.length === 0) {
+                     console.warn(`Blocco ${blockType} senza alimenti selezionati.`);
+                     // Decide if this is an error or just skip
+                     // For now, let's require at least one food per block
+                     alert(`Selezionare almeno un alimento per il blocco "${blockTypeLabels[blockType]}".`);
+                     blockError = true;
+                     // Try to focus the problematic input
+                     blockEl.querySelector('.food-search-input')?.focus();
+                     return; // Stop processing this block
+                 }
+                 savedData.blocks.push({
+                     blockType: blockType,
+                     selectedFoods: selectedFoods
+                 });
+             });
+
+             if (blockError) return; // Stop submission if a block had an error
+
+             if (savedData.blocks.length === 0){ // Should only happen if all blocks were skipped (e.g., empty)
                  alert("Nessun blocco valido trovato. Selezionare almeno un alimento per blocco.");
                  return;
              }
@@ -393,85 +429,297 @@ function createRadioInput(name, value, labelText, idPrefix, checked = false) {
     return { label, radio };
 }
 
-/** Adds a new block editor element to the blocks container. */
-function addBlockElement(container, idPrefix, blockTypeValue = 'una_scelta', selectedFoodsValue = []) {
-    const blockId = `block-${Date.now()}`; // Unique ID for the block element
+/**
+ * Adds a new block editor element (with improved UX) to the blocks container.
+ * @param {HTMLElement} container - The container element for all blocks.
+ * @param {string} [blockTypeValue='una_scelta'] - The initial block type.
+ * @param {Array<string>} [selectedFoodsValue=[]] - Initially selected food names.
+ */
+function addBlockElement(container, blockTypeValue = 'una_scelta', selectedFoodsValue = []) {
+    const blockId = `block-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const blockDiv = document.createElement('div');
     blockDiv.className = 'block-editor';
     blockDiv.id = blockId;
+    blockDiv.dataset.blockType = blockTypeValue; // Store type in dataset
+    blockDiv._selectedFoods = [...selectedFoodsValue]; // Store selected foods on the element property, ensure it's a copy
 
-    // Block Type Selector
+    // --- Block Type Selector ---
+    const typeSelectGroup = document.createElement('div');
+    typeSelectGroup.className = 'form-group block-type-selector';
     const typeSelect = document.createElement('select');
-    typeSelect.name = 'blockType';
+    typeSelect.name = 'blockType'; // This name isn't directly used by FormData anymore, but good for semantics
     Object.entries(blockTypeLabels).forEach(([key, label]) => {
-        const option = document.createElement('option');
-        option.value = key;
-        option.textContent = label;
+        const option = document.createElement('option'); option.value = key; option.textContent = label;
         if (key === blockTypeValue) option.selected = true;
         typeSelect.appendChild(option);
     });
+    typeSelect.onchange = (e) => { blockDiv.dataset.blockType = e.target.value; }; // Update dataset on change
+    typeSelectGroup.appendChild(typeSelect);
 
-    // Food Multi-Selector
-    const foodSelectLabel = document.createElement('label');
-    foodSelectLabel.textContent = " Alimenti:";
-    foodSelectLabel.style.display = 'block'; // Make label appear above select
+    // --- Food Autocomplete Input ---
+    const foodInputGroup = document.createElement('div');
+    foodInputGroup.className = 'form-group food-selector-group';
+    const foodInputLabel = document.createElement('label');
+    foodInputLabel.textContent = 'Aggiungi Alimento:'; foodInputLabel.htmlFor = `food-input-${blockId}`;
+    const foodInput = document.createElement('input');
+    foodInput.type = 'text'; foodInput.id = `food-input-${blockId}`; foodInput.className = 'food-search-input';
+    foodInput.placeholder = 'Inizia a digitare un alimento...'; foodInput.autocomplete = 'off';
+    foodInput.setAttribute('aria-controls', `food-suggestions-${blockId}`);
+    foodInput.setAttribute('aria-haspopup', 'listbox');
+    foodInputGroup.appendChild(foodInputLabel); foodInputGroup.appendChild(foodInput);
 
-    const foodSelect = document.createElement('select');
-    foodSelect.name = 'selectedFoods';
-    foodSelect.multiple = true;
-    foodSelect.size = 5; // Show a few options at once
-    // TODO: Add filtering logic here later if needed (based on blockType)
-    populateFoodMultiSelect(foodSelect, null, selectedFoodsValue); // Pass selected values
+    // --- Suggestions Container for this Block ---
+    const suggestionsContainer = document.createElement('div');
+    suggestionsContainer.id = `food-suggestions-${blockId}`;
+    suggestionsContainer.className = 'block-suggestions-container'; // Specific class
+    suggestionsContainer.setAttribute('role', 'listbox');
+    foodInputGroup.appendChild(suggestionsContainer); // Append suggestions below input
 
-    // Remove Block Button
+    // --- Selected Foods Display Area ---
+    const selectedDisplayGroup = document.createElement('div');
+    selectedDisplayGroup.className = 'form-group selected-foods-group';
+    selectedDisplayGroup.innerHTML = '<label>Alimenti Selezionati:</label>'; // Static label
+    const selectedDisplayArea = document.createElement('div');
+    selectedDisplayArea.className = 'selected-foods-display';
+    selectedDisplayGroup.appendChild(selectedDisplayArea);
+
+    // --- Remove Block Button ---
     const removeButton = document.createElement('button');
-    removeButton.type = 'button';
-    removeButton.textContent = 'Rimuovi Blocco';
-    removeButton.className = 'button-remove-block';
+    removeButton.type = 'button'; removeButton.textContent = 'Rimuovi Blocco'; removeButton.className = 'button-remove-block';
     removeButton.onclick = () => blockDiv.remove();
 
-    blockDiv.appendChild(typeSelect);
-    blockDiv.appendChild(foodSelectLabel);
-    blockDiv.appendChild(foodSelect);
+    // --- Assemble Block ---
+    blockDiv.appendChild(typeSelectGroup);
+    blockDiv.appendChild(foodInputGroup);
+    blockDiv.appendChild(selectedDisplayGroup);
     blockDiv.appendChild(removeButton);
     container.appendChild(blockDiv);
+
+    // --- Initial Render & Event Listeners for the new block ---
+    renderSelectedFoodsDisplay(blockDiv); // Render initial selected foods
+    setupBlockEventListeners(blockDiv); // Add listeners for input, suggestions, remove buttons
 }
 
-/** Populates a multi-select element with food items. */
-function populateFoodMultiSelect(selectElement, filterType = null, selectedValues = []) {
-     selectElement.innerHTML = ''; // Clear existing options
+/** Populates the display area showing selected foods with remove buttons. */
+function renderSelectedFoodsDisplay(blockDiv) {
+    const displayArea = blockDiv.querySelector('.selected-foods-display');
+    if (!displayArea) return;
+    displayArea.innerHTML = ''; // Clear previous
+    const selectedFoods = blockDiv._selectedFoods || [];
 
-     let filteredFood = _allFoodItemsCache;
+    if (selectedFoods.length === 0) {
+        displayArea.innerHTML = '<span class="placeholder">Nessun alimento selezionato</span>';
+        return;
+    }
 
-     // TODO: Implement actual filtering based on filterType ('contorno', 'secondo')
-     // if (filterType === 'contorno') {
-     //    filteredFood = _allFoodItemsCache.filter(item => item.foodGroup === 'contorno');
-     // } else if (filterType === 'secondo') {
-     //    filteredFood = _allFoodItemsCache.filter(item => item.foodGroup === 'secondo');
-     // }
+    selectedFoods.forEach(foodName => {
+        const itemSpan = document.createElement('span');
+        itemSpan.className = 'selected-food-item';
+        itemSpan.textContent = foodName;
 
-    if (!filteredFood || filteredFood.length === 0) {
-         const option = document.createElement('option');
-         option.textContent = "Nessun alimento disponibile";
-         option.disabled = true;
-         selectElement.appendChild(option);
-         return;
-     }
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'remove-food-btn';
+        removeBtn.innerHTML = '×'; // 'x' symbol
+        removeBtn.dataset.foodName = foodName;
+        removeBtn.setAttribute('aria-label', `Rimuovi ${foodName}`);
 
-    filteredFood.forEach(food => {
-        const option = document.createElement('option');
-        option.value = food.name; // Use name as value for now
-        option.textContent = food.name;
-        if (selectedValues.includes(food.name)) {
-            option.selected = true; // Pre-select if editing
-        }
-        selectElement.appendChild(option);
+        itemSpan.appendChild(removeBtn);
+        displayArea.appendChild(itemSpan);
     });
 }
 
-// Make functions available (simple global approach for now)
+/** Sets up event listeners for a specific block's input and display area. */
+function setupBlockEventListeners(blockDiv) {
+    const input = blockDiv.querySelector('.food-search-input');
+    const suggestionsContainer = blockDiv.querySelector('.block-suggestions-container');
+    const selectedDisplayArea = blockDiv.querySelector('.selected-foods-display');
+
+    if (!input || !suggestionsContainer || !selectedDisplayArea) {
+        console.error("Required elements missing within block:", blockDiv.id);
+        return;
+    }
+
+    let debounceTimeout = null;
+    let activeSuggestionIndex = -1;
+
+    // Input listener (debounced)
+    input.addEventListener('input', () => {
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(() => {
+            const searchTerm = input.value.toLowerCase().trim();
+            if (!searchTerm) {
+                renderBlockSuggestions(blockDiv, [], searchTerm); // Clear suggestions
+                return;
+            }
+            // Find matches NOT already selected in *this* block
+            const currentSelection = blockDiv._selectedFoods || [];
+            // TODO: Add filtering based on blockDiv.dataset.blockType if needed
+            const matches = _allFoodItemsCache.filter(item =>
+                !currentSelection.includes(item.name) &&
+                item.name.toLowerCase().includes(searchTerm)
+            ).sort((a, b) => a.name.localeCompare(b.name));
+            activeSuggestionIndex = -1; // Reset index on new suggestions
+            renderBlockSuggestions(blockDiv, matches, searchTerm);
+        }, 250); // Debounce delay
+    });
+
+    // Keyboard navigation for input/suggestions
+    input.addEventListener('keydown', (event) => {
+        const { key } = event;
+        const suggestionItems = suggestionsContainer.querySelectorAll('.suggestion-item');
+
+        if (!suggestionsContainer.classList.contains('visible') || suggestionItems.length === 0) {
+            if (key === 'Enter') event.preventDefault(); // Prevent form submit on Enter in input
+            return;
+        }
+
+        switch (key) {
+            case 'ArrowDown':
+                event.preventDefault();
+                activeSuggestionIndex = (activeSuggestionIndex + 1) % suggestionItems.length;
+                updateBlockActiveSuggestion(blockDiv, activeSuggestionIndex);
+                break;
+            case 'ArrowUp':
+                event.preventDefault();
+                activeSuggestionIndex = (activeSuggestionIndex - 1 + suggestionItems.length) % suggestionItems.length;
+                updateBlockActiveSuggestion(blockDiv, activeSuggestionIndex);
+                break;
+            case 'Enter':
+                event.preventDefault();
+                if (activeSuggestionIndex > -1 && suggestionItems[activeSuggestionIndex]) {
+                    const selectedFood = suggestionItems[activeSuggestionIndex].dataset.foodName;
+                    addFoodToBlock(blockDiv, selectedFood);
+                    activeSuggestionIndex = -1; // Reset index
+                }
+                break;
+            case 'Escape':
+                event.preventDefault();
+                hideBlockSuggestions(blockDiv);
+                activeSuggestionIndex = -1;
+                break;
+        }
+    });
+
+    // Click on suggestions (delegated)
+    suggestionsContainer.addEventListener('click', (event) => {
+        const targetItem = event.target.closest('.suggestion-item');
+        if (targetItem && targetItem.dataset.foodName) {
+            addFoodToBlock(blockDiv, targetItem.dataset.foodName);
+            activeSuggestionIndex = -1;
+        }
+    });
+
+    // Click on remove buttons (delegated)
+    selectedDisplayArea.addEventListener('click', (event) => {
+         if (event.target.classList.contains('remove-food-btn')) {
+            const foodName = event.target.dataset.foodName;
+            removeFoodFromBlock(blockDiv, foodName);
+        }
+    });
+
+     // Hide suggestions on blur/click outside
+     input.addEventListener('blur', () => {
+         // Delay hiding slightly to allow suggestion clicks
+         setTimeout(() => {
+             // Check if focus is now inside the suggestion list; if so, don't hide
+             if (!suggestionsContainer.contains(document.activeElement)) {
+                 hideBlockSuggestions(blockDiv);
+                 activeSuggestionIndex = -1;
+             }
+         }, 150);
+     });
+     // Also hide suggestions if clicking outside the whole block editor
+      document.addEventListener('click', (event) => {
+          if (!blockDiv.contains(event.target)) {
+               hideBlockSuggestions(blockDiv);
+               activeSuggestionIndex = -1;
+           }
+      }, true); // Use capture phase to catch clicks early
+}
+
+/** Renders suggestions specifically for a block's input. */
+function renderBlockSuggestions(blockDiv, matches, searchTerm) {
+    const suggestionsContainer = blockDiv.querySelector('.block-suggestions-container');
+    const input = blockDiv.querySelector('.food-search-input');
+    if (!suggestionsContainer || !input) return;
+
+    suggestionsContainer.innerHTML = '';
+    input.removeAttribute('aria-activedescendant');
+
+    if (matches.length === 0 || !searchTerm) {
+        suggestionsContainer.classList.remove('visible');
+        return;
+    }
+
+    matches.slice(0, 5).forEach((item, index) => { // Limit block suggestions
+        const li = document.createElement('li');
+        li.className = 'suggestion-item'; // Reuse class
+        li.setAttribute('role', 'option');
+        li.id = `${blockDiv.id}-suggestion-${index}`;
+        li.dataset.foodName = item.name;
+        const regex = new RegExp(`(${searchTerm.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi');
+        li.innerHTML = item.name.replace(regex, '<mark>$1</mark>');
+        suggestionsContainer.appendChild(li);
+    });
+    suggestionsContainer.classList.add('visible');
+}
+
+/** Hides suggestions for a specific block. */
+function hideBlockSuggestions(blockDiv) {
+    const suggestionsContainer = blockDiv.querySelector('.block-suggestions-container');
+    const input = blockDiv.querySelector('.food-search-input');
+    if (suggestionsContainer) suggestionsContainer.classList.remove('visible');
+    if (input) input.removeAttribute('aria-activedescendant');
+}
+
+/** Updates the active suggestion visual state for a block. */
+function updateBlockActiveSuggestion(blockDiv, activeIndex) {
+    const suggestionsContainer = blockDiv.querySelector('.block-suggestions-container');
+    const input = blockDiv.querySelector('.food-search-input');
+    if (!suggestionsContainer || !input) return;
+
+    const items = suggestionsContainer.querySelectorAll('.suggestion-item');
+    items.forEach((item, index) => {
+        if (index === activeIndex) {
+            item.classList.add('active');
+            input.setAttribute('aria-activedescendant', item.id);
+            // Basic scroll into view for block suggestions
+            item.scrollIntoView({ block: 'nearest' });
+        } else {
+            item.classList.remove('active');
+        }
+    });
+}
+
+/** Adds a selected food to a block's internal list and UI. */
+function addFoodToBlock(blockDiv, foodName) {
+    if (!blockDiv || !foodName) return;
+    const input = blockDiv.querySelector('.food-search-input');
+
+    blockDiv._selectedFoods = blockDiv._selectedFoods || []; // Ensure array exists
+    if (!blockDiv._selectedFoods.includes(foodName)) {
+        blockDiv._selectedFoods.push(foodName);
+        renderSelectedFoodsDisplay(blockDiv); // Update the list display
+    }
+    if (input) input.value = ''; // Clear input
+    hideBlockSuggestions(blockDiv); // Hide suggestions
+    if (input) input.focus(); // Keep focus in the input for adding more
+}
+
+/** Removes a food from a block's internal list and UI. */
+function removeFoodFromBlock(blockDiv, foodName) {
+    if (!blockDiv || !foodName) return;
+    blockDiv._selectedFoods = blockDiv._selectedFoods || [];
+    blockDiv._selectedFoods = blockDiv._selectedFoods.filter(name => name !== foodName);
+    renderSelectedFoodsDisplay(blockDiv); // Update the list display
+}
+
+
+// Make necessary functions available globally or via export
 window.combinationUI = {
     setFoodItemCache,
+    setCategoriesCache, // Add this
     displayCombinationsList,
     createCombinationFormElement
 };

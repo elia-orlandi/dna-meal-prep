@@ -24,7 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
         searchDebounceTimeout: null
     };
 
-    // --- Constants ---
+    // --- Configuration ---
+    const CATEGORIES_CONFIG = ['A', 'B', 'C', 'D', 'Libera']; // <-- Configurable Categories
     const MAX_SUGGESTIONS = 7;
     const SEARCH_DEBOUNCE_DELAY = 250;
 
@@ -42,56 +43,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- DOM Update Functions (Food List Specific) ---
     function updateFooterLegend(legendId) { const legend = legendDefs[legendId]; if (!legend || !footerLegendDisplay) { console.warn("Footer legend display element not found."); return; } footerLegendDisplay.innerHTML = ''; legend.ranges.forEach(range => { const li = document.createElement('li'); const span = document.createElement('span'); span.className = `legend-color ${range.colorClass}`; li.appendChild(span); li.appendChild(document.createTextNode(range.label)); footerLegendDisplay.appendChild(li); }); };
+    function renderFoodList(foodArray, isSearchResult = false) { state.currentlyDisplayedData = foodArray; if (!foodListContainer) { console.error("Food list container element not found."); return; } foodListContainer.innerHTML = ''; if (!state.isDataLoaded) { foodListContainer.innerHTML = `<p class="loading-message">Caricamento dati alimenti...</p>`; return; } if (state.allFoodData.length === 0 && state.isDataLoaded) { foodListContainer.innerHTML = `<p class="empty-data-message">Nessun dato alimentare disponibile.</p>`; return; } if (foodArray.length === 0) { const searchTerm = searchInput ? searchInput.value.trim() : ""; foodListContainer.innerHTML = `<p class="no-results-message">Nessun alimento trovato${searchTerm ? ` per "${searchTerm}"` : ''}.</p>`; return; } const groupedData = groupByCategory(foodArray); const sortedCategories = Object.keys(groupedData).sort(); sortedCategories.forEach((category, index) => { const categorySection = createCategorySection(category, groupedData[category], index); foodListContainer.appendChild(categorySection); const shouldExpand = isSearchResult || sortedCategories.length === 1; if (shouldExpand) { categorySection.classList.remove('collapsed'); const header = categorySection.querySelector('.category-header'); if (header) header.setAttribute('aria-expanded', 'true'); const wrapper = categorySection.querySelector('.food-item-wrapper'); if(wrapper) { wrapper.style.transition = 'none'; requestAnimationFrame(() => wrapper.style.transition = ''); } } }); setupCollapseListeners(); };
+    function createCategorySection(categoryName, items, index) { const section = document.createElement('section'); section.className = 'category-section collapsed'; const contentId = `category-content-${index}`; const header = document.createElement('button'); header.className = 'category-header'; header.setAttribute('aria-expanded', 'false'); header.setAttribute('aria-controls', contentId); header.textContent = categoryName; section.appendChild(header); const itemsWrapper = document.createElement('div'); itemsWrapper.className = 'food-item-wrapper'; itemsWrapper.id = contentId; section.appendChild(itemsWrapper); items.sort((a, b) => a.name.localeCompare(b.name)); items.forEach(item => { const itemElement = createFoodItemElement(item); itemsWrapper.appendChild(itemElement); }); return section; };
+    function createFoodItemElement(item) { const itemDiv = document.createElement('div'); itemDiv.className = 'food-item'; const nameSpan = document.createElement('span'); nameSpan.className = 'food-name'; nameSpan.textContent = item.name; const valueSpan = document.createElement('span'); valueSpan.className = 'food-value'; valueSpan.textContent = item.value; const barContainer = document.createElement('div'); barContainer.className = 'value-bar-container'; const bar = document.createElement('div'); bar.className = `value-bar ${getColorClassForValue(item.value, state.activeLegendId)}`; const numericValue = Number(item.value); const barWidth = isNaN(numericValue) ? 0 : Math.min(Math.max(numericValue, 0), 100); bar.style.width = `${barWidth}%`; barContainer.appendChild(bar); itemDiv.appendChild(nameSpan); itemDiv.appendChild(valueSpan); itemDiv.appendChild(barContainer); return itemDiv; };
 
-    /** Renders the main food list. */
-    function renderFoodList(foodArray, isSearchResult = false) {
-        state.currentlyDisplayedData = foodArray;
-        if (!foodListContainer) { console.error("Food list container element not found."); return; }
-        foodListContainer.innerHTML = '';
-
-        if (!state.isDataLoaded) { foodListContainer.innerHTML = `<p class="loading-message">Caricamento dati alimenti...</p>`; return; }
-        if (state.allFoodData.length === 0 && state.isDataLoaded) { foodListContainer.innerHTML = `<p class="empty-data-message">Nessun dato alimentare disponibile.</p>`; return; } // Different message if JSON was empty
-        if (foodArray.length === 0) { const searchTerm = searchInput ? searchInput.value.trim() : ""; foodListContainer.innerHTML = `<p class="no-results-message">Nessun alimento trovato${searchTerm ? ` per "${searchTerm}"` : ''}.</p>`; return; }
-
-        const groupedData = groupByCategory(foodArray);
-        const sortedCategories = Object.keys(groupedData).sort();
-
-        sortedCategories.forEach((category, index) => {
-            const categorySection = createCategorySection(category, groupedData[category], index);
-            foodListContainer.appendChild(categorySection);
-
-            const shouldExpand = isSearchResult || sortedCategories.length === 1;
-            if (shouldExpand) {
-                categorySection.classList.remove('collapsed');
-                const header = categorySection.querySelector('.category-header');
-                if (header) header.setAttribute('aria-expanded', 'true');
-                const wrapper = categorySection.querySelector('.food-item-wrapper');
-                if(wrapper) { wrapper.style.transition = 'none'; requestAnimationFrame(() => wrapper.style.transition = ''); } // Disable/re-enable transition for instant open
-            }
-        });
-        setupCollapseListeners();
-    }
-
-     function createCategorySection(categoryName, items, index) { const section = document.createElement('section'); section.className = 'category-section collapsed'; const contentId = `category-content-${index}`; const header = document.createElement('button'); header.className = 'category-header'; header.setAttribute('aria-expanded', 'false'); header.setAttribute('aria-controls', contentId); header.textContent = categoryName; section.appendChild(header); const itemsWrapper = document.createElement('div'); itemsWrapper.className = 'food-item-wrapper'; itemsWrapper.id = contentId; section.appendChild(itemsWrapper); items.sort((a, b) => a.name.localeCompare(b.name)); items.forEach(item => { const itemElement = createFoodItemElement(item); itemsWrapper.appendChild(itemElement); }); return section; };
-     function createFoodItemElement(item) { const itemDiv = document.createElement('div'); itemDiv.className = 'food-item'; const nameSpan = document.createElement('span'); nameSpan.className = 'food-name'; nameSpan.textContent = item.name; const valueSpan = document.createElement('span'); valueSpan.className = 'food-value'; valueSpan.textContent = item.value; const barContainer = document.createElement('div'); barContainer.className = 'value-bar-container'; const bar = document.createElement('div'); bar.className = `value-bar ${getColorClassForValue(item.value, state.activeLegendId)}`; const numericValue = Number(item.value); const barWidth = isNaN(numericValue) ? 0 : Math.min(Math.max(numericValue, 0), 100); bar.style.width = `${barWidth}%`; barContainer.appendChild(bar); itemDiv.appendChild(nameSpan); itemDiv.appendChild(valueSpan); itemDiv.appendChild(barContainer); return itemDiv; };
-
-    // --- Suggestion Functions (Slightly Modified selectSuggestion) ---
+    // --- Suggestion Functions ---
     function renderSuggestions(matches, searchTerm) { if (!suggestionsList) { console.error("#suggestionsList not found."); return; } suggestionsList.innerHTML = ''; state.activeSuggestionIndex = -1; if (searchInput) searchInput.removeAttribute('aria-activedescendant'); if (matches.length === 0 || !searchTerm) { if (suggestionsContainer) suggestionsContainer.classList.remove('visible'); return; } const fragment = document.createDocumentFragment(); matches.slice(0, MAX_SUGGESTIONS).forEach((item, index) => { const li = document.createElement('li'); li.className = 'suggestion-item'; li.setAttribute('role', 'option'); li.id = `suggestion-${index}`; li.dataset.foodName = item.name; const regex = new RegExp(`(${searchTerm.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi'); li.innerHTML = item.name.replace(regex, '<mark>$1</mark>'); fragment.appendChild(li); }); suggestionsList.appendChild(fragment); if (suggestionsContainer) suggestionsContainer.classList.add('visible'); };
     function hideSuggestions() { if (suggestionsContainer) suggestionsContainer.classList.remove('visible'); state.activeSuggestionIndex = -1; if (searchInput) searchInput.removeAttribute('aria-activedescendant'); };
-    function selectSuggestion(foodName) {
-        if (searchInput) searchInput.value = foodName;
-        hideSuggestions();
-        toggleClearButton();
-        const exactMatches = state.allFoodData.filter(item => item.name.toLowerCase() === foodName.toLowerCase() );
-        // Filter MAIN food list when selecting from autocomplete
-        renderFoodList(exactMatches.length > 0 ? exactMatches : [], true);
-    };
+    function selectSuggestion(foodName) { if (searchInput) searchInput.value = foodName; hideSuggestions(); toggleClearButton(); const exactMatches = state.allFoodData.filter(item => item.name.toLowerCase() === foodName.toLowerCase() ); renderFoodList(exactMatches.length > 0 ? exactMatches : [], true); };
     function updateActiveSuggestion() { if (!suggestionsList) return; const items = suggestionsList.querySelectorAll('.suggestion-item'); items.forEach((item, index) => { if (index === state.activeSuggestionIndex) { item.classList.add('active'); item.scrollIntoView({ block: 'nearest' }); if (searchInput) searchInput.setAttribute('aria-activedescendant', item.id); } else { item.classList.remove('active'); } }); };
-    function toggleClearButton() { if (!clearSearchBtn || !searchInput) return; clearSearchBtn.hidden = searchInput.value.trim() === ''; }
+    function toggleClearButton() { if (!clearSearchBtn || !searchInput) return; clearSearchBtn.hidden = searchInput.value.trim() === ''; };
 
-    // --- Event Handlers (Food List Specific) ---
-    function performSearch() { if (!searchInput) return; const searchTerm = searchInput.value.toLowerCase().trim(); toggleClearButton(); if (!searchTerm) { renderSuggestions([], searchTerm); renderFoodList(state.allFoodData, false); return; } const matches = state.allFoodData.filter(item => item.name.toLowerCase().includes(searchTerm) ).sort((a, b) => a.name.localeCompare(b.name)); renderSuggestions(matches, searchTerm); }
-    function handleDebouncedSearchInput() { clearTimeout(state.searchDebounceTimeout); state.searchDebounceTimeout = setTimeout(performSearch, SEARCH_DEBOUNCE_DELAY); }
+    // --- Event Handlers ---
+    function performSearch() { if (!searchInput) return; const searchTerm = searchInput.value.toLowerCase().trim(); toggleClearButton(); if (!searchTerm) { renderSuggestions([], searchTerm); renderFoodList(state.allFoodData, false); return; } const matches = state.allFoodData.filter(item => item.name.toLowerCase().includes(searchTerm) ).sort((a, b) => a.name.localeCompare(b.name)); renderSuggestions(matches, searchTerm); };
+    function handleDebouncedSearchInput() { clearTimeout(state.searchDebounceTimeout); state.searchDebounceTimeout = setTimeout(performSearch, SEARCH_DEBOUNCE_DELAY); };
     function handleSuggestionClick(event) { const targetItem = event.target.closest('.suggestion-item'); if (targetItem && targetItem.dataset.foodName) { selectSuggestion(targetItem.dataset.foodName); } };
     function handleSearchKeyDown(event) { if (!suggestionsList || !suggestionsContainer || !searchInput) return; const { key } = event; const items = suggestionsList.querySelectorAll('.suggestion-item'); if (!suggestionsContainer.classList.contains('visible') || items.length === 0) { if (key === 'Enter') { event.preventDefault(); handleSearchSubmit(); } return; } switch (key) { case 'ArrowDown': event.preventDefault(); state.activeSuggestionIndex = (state.activeSuggestionIndex + 1) % items.length; updateActiveSuggestion(); break; case 'ArrowUp': event.preventDefault(); state.activeSuggestionIndex = (state.activeSuggestionIndex - 1 + items.length) % items.length; updateActiveSuggestion(); break; case 'Enter': event.preventDefault(); if (state.activeSuggestionIndex > -1 && items[state.activeSuggestionIndex]) { selectSuggestion(items[state.activeSuggestionIndex].dataset.foodName); } else { handleSearchSubmit(); } break; case 'Escape': event.preventDefault(); hideSuggestions(); break; } };
     function handleSearchSubmit() { if (!searchInput) return; const searchTerm = searchInput.value.trim(); hideSuggestions(); toggleClearButton(); if (searchTerm) { const matches = state.allFoodData.filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()) ); renderFoodList(matches, true); } else { renderFoodList(state.allFoodData, false); } };
@@ -112,13 +77,11 @@ document.addEventListener('DOMContentLoaded', () => {
         document.addEventListener('click', handleGlobalClick);
         if (legendSwitcher) { legendSwitcher.addEventListener('click', handleLegendSwitch); }
         else { console.warn("Legend switcher not found."); }
-        // Collapse listeners set up after first render
     };
 
     // --- Initialization ---
     function initializeApp() {
         renderFoodList([]); // Show loading for food list
-        // Placeholder for combinations loading message
         if(combinationsListContainer) combinationsListContainer.innerHTML = '<p>Caricamento combinazioni...</p>';
 
         fetch('alimenti.json')
@@ -129,10 +92,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderFoodList(state.allFoodData, false); // Render food list
                 updateFooterLegend(state.activeLegendId);
 
-                // --- Initialize Combinations Module ---
+                // --- Initialize Combinations Module with Config ---
                 // Check if the init function exists (script loaded)
                 if (typeof initCombinations === 'function') {
-                    initCombinations(combinationFormModal, combinationsListContainer, state.allFoodData);
+                    // Pass the configurable categories
+                    initCombinations(combinationFormModal, combinationsListContainer, state.allFoodData, CATEGORIES_CONFIG);
                 } else {
                     console.error("initCombinations function not found. Ensure combinations.js is loaded correctly.");
                      if(combinationsListContainer) combinationsListContainer.innerHTML = '<p class="error-message">Errore caricamento modulo combinazioni.</p>';
@@ -154,4 +118,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Start ---
     initializeApp();
+
 });

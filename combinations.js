@@ -4,7 +4,8 @@
 
 let _combinationsState = {
     allCombinations: [],
-    allFoodItems: [], // Reference to the main food data
+    allFoodItems: [],
+    categoriesConfig: [], // <-- Store categories
     isModalOpen: false,
     modalContainer: null, // Reference to the modal element
     listContainer: null // Reference to the list display element
@@ -15,18 +16,23 @@ let _combinationsState = {
  * @param {HTMLElement} modalContainerElement - The DOM element for the form modal.
  * @param {HTMLElement} listContainerElement - The DOM element where the list is displayed.
  * @param {Array<Object>} allFoodData - The complete food data from the main script.
+ * @param {Array<string>} categoriesConfig - Configurable category list.
  */
-function initCombinations(modalContainerElement, listContainerElement, allFoodData) {
+function initCombinations(modalContainerElement, listContainerElement, allFoodData, categoriesConfig) { // <-- Add categoriesConfig
     _combinationsState.modalContainer = modalContainerElement;
     _combinationsState.listContainer = listContainerElement;
     _combinationsState.allFoodItems = allFoodData || [];
+    _combinationsState.categoriesConfig = categoriesConfig || ['A', 'B', 'C', 'D']; // <-- Store config
 
-    // Pass food data to the UI module
-    if (window.combinationUI && typeof window.combinationUI.setFoodItemCache === 'function') {
-        window.combinationUI.setFoodItemCache(_combinationsState.allFoodItems);
-    } else {
-        console.error("combinationUI or setFoodItemCache not available.");
-    }
+    // Pass data to the UI module
+    if (window.combinationUI) {
+        if (typeof window.combinationUI.setFoodItemCache === 'function') {
+            window.combinationUI.setFoodItemCache(_combinationsState.allFoodItems);
+        } else { console.error("combinationUI.setFoodItemCache not available."); }
+        if (typeof window.combinationUI.setCategoriesCache === 'function') { // <-- Set categories in UI
+            window.combinationUI.setCategoriesCache(_combinationsState.categoriesConfig);
+        } else { console.error("combinationUI.setCategoriesCache not available."); }
+    } else { console.error("combinationUI not available."); }
 
 
     _combinationsState.allCombinations = loadCombinationsFromStorage();
@@ -84,6 +90,7 @@ function showCombinationForm(combinationToEdit = null) {
         return;
     }
      if (window.combinationUI && typeof window.combinationUI.createCombinationFormElement === 'function') {
+         // Categories are now handled internally by combinationUI using the cache
          const formElement = window.combinationUI.createCombinationFormElement(
              combinationToEdit,
              handleSaveCombination,
@@ -91,7 +98,12 @@ function showCombinationForm(combinationToEdit = null) {
          );
          _combinationsState.modalContainer.innerHTML = ''; // Clear previous form
          _combinationsState.modalContainer.appendChild(formElement);
-         _combinationsState.modalContainer.showModal(); // Show HTML dialog element
+         // Ensure modal is focusable after opening for accessibility
+         _combinationsState.modalContainer.showModal();
+          // Attempt to focus the first focusable element within the modal
+          const firstFocusable = formElement.querySelector('select, input, textarea, button');
+          if(firstFocusable) firstFocusable.focus();
+
          _combinationsState.isModalOpen = true;
      } else {
          console.error("combinationUI or createCombinationFormElement not available.");
